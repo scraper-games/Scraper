@@ -244,8 +244,10 @@
 <script src="i18n.js"></script>
 <script src="game.js"></script>
 
+<div class="cookie-backdrop" id="cookieBackdrop"></div>
 <div class="cookie-banner" id="cookieBanner">
-  <p>Ta strona używa Google Analytics do zbierania anonimowych statystyk odwiedzin (pliki cookie).</p>
+  <h2 class="cookie-banner-title">Pliki cookie</h2>
+  <p>Ta strona używa Google Analytics do zbierania anonimowych statystyk odwiedzin (pliki cookie). Możesz to zaakceptować lub odrzucić.</p>
   <div class="cookie-banner-btns">
     <button class="btn" id="cookieAccept">Akceptuję</button>
     <button class="btn ghost" id="cookieDecline">Odrzuć</button>
@@ -266,21 +268,28 @@
   }
 
   var banner = document.getElementById('cookieBanner');
+  var backdrop = document.getElementById('cookieBackdrop');
   var consent = localStorage.getItem('cookieConsent');
   if (consent === 'accepted') {
     loadGA();
   } else if (consent !== 'declined') {
     banner.classList.add('visible');
+    backdrop.classList.add('visible');
+  }
+
+  function hideBanner(){
+    banner.classList.remove('visible');
+    backdrop.classList.remove('visible');
   }
 
   document.getElementById('cookieAccept').addEventListener('click', function(){
     localStorage.setItem('cookieConsent', 'accepted');
-    banner.classList.remove('visible');
+    hideBanner();
     loadGA();
   });
   document.getElementById('cookieDecline').addEventListener('click', function(){
     localStorage.setItem('cookieConsent', 'declined');
-    banner.classList.remove('visible');
+    hideBanner();
   });
 })();
 </script>
