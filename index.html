@@ -243,5 +243,46 @@
 
 <script src="i18n.js"></script>
 <script src="game.js"></script>
+
+<div class="cookie-banner" id="cookieBanner">
+  <p>Ta strona używa Google Analytics do zbierania anonimowych statystyk odwiedzin (pliki cookie).</p>
+  <div class="cookie-banner-btns">
+    <button class="btn" id="cookieAccept">Akceptuję</button>
+    <button class="btn ghost" id="cookieDecline">Odrzuć</button>
+  </div>
+</div>
+<script>
+(function(){
+  var GA_ID = 'G-XXXXXXXXXX';
+  function loadGA(){
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', GA_ID, { anonymize_ip: true });
+  }
+
+  var banner = document.getElementById('cookieBanner');
+  var consent = localStorage.getItem('cookieConsent');
+  if (consent === 'accepted') {
+    loadGA();
+  } else if (consent !== 'declined') {
+    banner.classList.add('visible');
+  }
+
+  document.getElementById('cookieAccept').addEventListener('click', function(){
+    localStorage.setItem('cookieConsent', 'accepted');
+    banner.classList.remove('visible');
+    loadGA();
+  });
+  document.getElementById('cookieDecline').addEventListener('click', function(){
+    localStorage.setItem('cookieConsent', 'declined');
+    banner.classList.remove('visible');
+  });
+})();
+</script>
 </body>
 </html>

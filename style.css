@@ -353,3 +353,16 @@ h1 span { color: var(--accent); }
 .dot { width:9px; height:9px; border-radius:3px; display:inline-block; }
 .screen::-webkit-scrollbar { width:6px; }
 .screen::-webkit-scrollbar-thumb { background:var(--panel-edge); border-radius:3px; }
+
+.cookie-banner {
+  position: fixed; left: 50%; bottom: -120px; transform: translateX(-50%);
+  z-index: 2000; width: min(560px, 92vw);
+  background: linear-gradient(180deg, var(--panel-2), var(--bg-mid));
+  border: 1.5px solid var(--panel-edge); border-radius: 12px;
+  padding: 14px 18px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  transition: bottom .35s ease;
+}
+.cookie-banner.visible { bottom: 16px; }
+.cookie-banner p { margin: 0; flex: 1 1 260px; font-size: 13px; color: var(--text); }
+.cookie-banner-btns { display: flex; gap: 8px; flex: none; }
