@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scraper</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Scraper">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#090c14">
+<link id="pwaManifest" rel="manifest">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="hud hidden" id="hud">
+    <div id="hudLeft">Wynik <b id="score">0</b></div>
+    <div id="hudRight">Cel <b id="target">0</b></div>
+    <button class="sound-btn" id="pauseBtn" title="Pause" style="display:none;">⏸</button>
+    <button class="sound-btn" id="soundBtn" title="Sound">🔊</button>
+  </div>
+  <div class="ability-hud hidden" id="abilityHud">
+    <span class="ability-slot" id="abilitySlot-shield">1: 🛡️ ×0</span>
+    <span class="ability-slot" id="abilitySlot-invis">2: 👻 ×0</span>
+    <span class="ability-slot" id="abilitySlot-pulse">3: 💥 ×0</span>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="board" width="480" height="600"></canvas>
+    <div class="hitFlash" id="hitFlash"></div>
+
+    <div class="screen" id="mainMenu">
+      <div class="mm-title" id="mmTitle">Scraper</div>
+      <div class="tutorial-modal" id="tutorialModal">
+        <div class="tutorial-modal-box">
+          <div class="tutorial-modal-title" id="tutorialModalTitle">Samouczek</div>
+          <div class="tutorial-modal-text" id="tutorialModalText"></div>
+          <div class="tutorial-modal-progress" id="tutorialModalProgress"></div>
+          <div class="tutorial-modal-btns">
+            <button class="btn ghost" id="btnTutorialSkip">Pomiń samouczek</button>
+            <button class="btn" id="btnTutorialOk">OK</button>
+          </div>
+        </div>
+      </div>
+      <div class="mm-topleft-col">
+        <div class="mm-daily" id="mmDaily">
+          <div class="mm-daily-title" id="mmDailyTitle">Misje dzienne</div>
+          <div class="mm-daily-list" id="mmDailyList"></div>
+        </div>
+        <div class="mm-challenge" id="mmChallenge">
+          <div class="mm-challenge-title" id="mmChallengeTitle">Wyzwanie dnia</div>
+          <div class="mm-challenge-mods" id="mmChallengeMods"></div>
+          <div class="mm-challenge-list" id="mmChallengeList"></div>
+          <div class="mm-challenge-reward" id="mmChallengeReward"></div>
+          <button class="mm-challenge-btn" id="btnChallenge">Wyzwanie</button>
+        </div>
+      </div>
+      <div class="mm-level" id="mmLevel">
+        <div class="mm-level-top">
+          <div class="mm-level-label" id="mmLevelLabel">Poziom 1</div>
+          <div class="mm-level-exp" id="mmLevelExp">0 / 100 EXP</div>
+        </div>
+        <div class="mm-level-bar-track"><div class="mm-level-bar-fill" id="mmLevelBarFill" style="width:0%"></div></div>
+      </div>
+      <div class="mm-record" id="mmRecord">Rekord: 0 m</div>
+      <div class="mm-right-col">
+        <div class="mm-currency">
+          <span class="mm-currency-chip mm-chip-coins" id="mmCoins">🪙 0</span>
+          <span class="mm-currency-chip mm-chip-diamonds" id="mmDiamonds">💎 0</span>
+        </div>
+        <div class="mm-icon-row">
+          <button class="mm-icon-btn" id="btnAchievements" title="Osiągnięcia">🏆</button>
+          <button class="mm-icon-btn" id="btnSettings" title="Ustawienia">⚙️</button>
+        </div>
+        <div class="mm-side-buttons">
+          <button class="menu-btn secondary mm-side-btn" id="btnShop">Sklep</button>
+          <button class="menu-btn secondary mm-side-btn" id="btnMissions">Misje</button>
+          <button class="menu-btn secondary mm-side-btn" id="btnCrates">Skrzynki</button>
+          <button class="menu-btn secondary mm-side-btn" id="btnLevels">Poziomy</button>
+        </div>
+      </div>
+      <div class="mm-play-area">
+        <div class="mm-mode-select">
+          <button class="mm-arrow" id="mmModePrev">◀</button>
+          <span class="mm-mode-label" id="mmModeLabel">Poziomy</span>
+          <button class="mm-arrow" id="mmModeNext">▶</button>
+        </div>
+        <button class="mm-play-btn" id="btnPlay">GRAJ</button>
+      </div>
+      <button class="mm-exit-btn" id="btnExit">Exit</button>
+    </div>
+
+    <div class="screen" id="singleSelect">
+      <h2 id="singleTitle">Singleplayer</h2>
+      <p class="sub" id="singleSubtitle">Wybierz sposób gry</p>
+      <button class="menu-btn secondary" id="btnFreeplay">Tryb wolny</button>
+      <p class="sub" id="freeplayRecord" style="margin-top:-8px;">Rekord: 0</p>
+      <button class="menu-btn ghost" id="btnBackFromSingle">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="shopScreen">
+      <h2 id="shopTitle">Sklep</h2>
+      <p class="sub" id="shopSubtitle">Wydaj monety na nowe kolory kulki</p>
+      <p class="sub" id="shopCoins" style="margin-top:-8px;color:var(--gold);">🪙 0</p>
+      <div class="shop-tabs" id="shopTabs">
+        <button class="shop-tab-btn" id="shopTabCoin" data-kind="coin">Monety</button>
+        <button class="shop-tab-btn" id="shopTabCrate" data-kind="crate">Skrzynki</button>
+        <button class="shop-tab-btn" id="shopTabMission" data-kind="mission">Misje</button>
+        <button class="shop-tab-btn" id="shopTabBoss" data-kind="boss">Bossy</button>
+      </div>
+      <div class="shop-browse-area hidden" id="shopBrowseArea">
+        <div class="shop-preview">
+          <button class="shop-arrow" id="shopPrevBtn">◀</button>
+          <canvas id="skinPreviewCanvas" width="140" height="140"></canvas>
+          <button class="shop-arrow" id="shopNextBtn">▶</button>
+        </div>
+        <div class="shop-skin-name" id="shopSkinName">Turkus</div>
+        <div class="shop-skin-state" id="shopSkinState"></div>
+        <button class="btn" id="shopActionBtn">Kup — 0 🪙</button>
+      </div>
+      <p class="sub shop-tab-hint" id="shopTabHint">Wybierz kategorię powyżej</p>
+      <button class="menu-btn ghost" id="btnBackFromShop">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="achievementsScreen">
+      <h2 id="achievementsTitle">Osiągnięcia</h2>
+      <p class="sub" id="achievementsSubtitle">Twoje postępy w grze</p>
+      <div class="trophy-grid" id="achvList"></div>
+      <button class="menu-btn ghost" id="btnBackFromAchievements">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="missionsScreen">
+      <h2 id="missionsTitle">Misje</h2>
+      <p class="sub" id="missionsSubtitle">Wykonuj wyzwania i zdobywaj nagrody</p>
+      <div class="quest-list" id="missionsList"></div>
+      <button class="menu-btn ghost" id="btnBackFromMissions">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="cratesScreen">
+      <h2 id="cratesTitle">Skrzynki</h2>
+      <p class="sub" id="cratesSubtitle">Kupuj i otwieraj skrzynki z nagrodami</p>
+      <div class="crate-shop-row" id="crateShopRow"></div>
+      <button class="menu-btn ghost" id="btnBackFromCrates">Powrót do menu</button>
+    </div>
+
+    <div class="overlay" id="crateOpenOverlay">
+      <div class="crate-open-icon" id="crateOpenIcon">📦</div>
+      <h2 id="crateOpenTitle">Otwieranie...</h2>
+      <div class="crate-open-coins" id="crateOpenCoins"></div>
+      <div class="crate-open-items" id="crateOpenItems"></div>
+      <div class="overlay-btns" id="crateOpenBtns"></div>
+    </div>
+
+    <div class="screen" id="boosterScreen">
+      <h2 id="boosterTitle">Podwajacze</h2>
+      <p class="sub" id="boosterSubtitle">Aktywuj jeden podwajacz na ten bieg (opcjonalnie)</p>
+      <div class="quest-list" id="boosterList"></div>
+      <button class="menu-btn ghost" id="btnStartNoBooster">Start bez podwajacza</button>
+    </div>
+
+    <div class="screen" id="settingsScreen">
+      <h2 id="settingsTitle">Ustawienia</h2>
+      <label class="settings-field">
+        <span id="volumeLabel">Głośność</span>
+        <input type="range" id="volumeSlider" min="0" max="100" value="60" style="accent-color:#5ee9d6;">
+      </label>
+      <label class="settings-field">
+        <span id="languageLabel">Język</span>
+        <select id="langSelect"></select>
+      </label>
+      <div class="sub" id="unlocksTitle" style="margin-top:2px;">Odblokowywanie poziomem</div>
+      <div class="quest-list" id="unlocksList"></div>
+      <button class="menu-btn danger" id="btnResetGame">Resetuj grę</button>
+      <button class="menu-btn ghost" id="btnBackFromSettings">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="multiSelect">
+      <h2 id="multiTitle">Multiplayer</h2>
+      <p class="sub" id="multiSubtitle">Wybierz tryb dla dwóch graczy: 🟢 strzałki, 🟠 WSAD</p>
+      <button class="menu-btn primary" id="btnCoop">Kooperacja</button>
+      <p class="sub" id="coopDesc" style="margin-top:-8px;">Wspólne 3 życia — zajdźcie jak najdalej razem</p>
+      <button class="menu-btn secondary" id="btnVersus">Rywalizacja</button>
+      <p class="sub" id="versusDesc" style="margin-top:-8px;">Bez drugich szans — kto pierwszy przegra</p>
+      <button class="menu-btn ghost" id="btnBackFromMulti">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="levelSelect">
+      <h2 id="levelTitle">Poziomy</h2>
+      <p class="sub" id="levelSub">Poziomy 10/20/30/40/50 to BOSS-y</p>
+      <div class="level-grid" id="levelGrid"></div>
+      <div class="page-nav">
+        <button id="prevPage">◀</button>
+        <span id="pageLabel">Strona 1/5</span>
+        <button id="nextPage">▶</button>
+      </div>
+      <button class="menu-btn ghost" id="btnBackFromLevels">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="exitScreen">
+      <h2 id="exitTitle">Dzięki za grę!</h2>
+      <p class="sub" id="exitSubtitle">Możesz teraz zamknąć tę kartę przeglądarki.</p>
+      <button class="menu-btn ghost" id="btnBackFromExit">Wróć do menu</button>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <h2 id="overTitle">Koniec gry</h2>
+      <p id="overText">Zderzyłeś się z przeszkodą.</p>
+      <p class="sub" id="overCoins" style="color:var(--gold);"></p>
+      <p class="sub" id="overExp" style="color:var(--level);"></p>
+      <div class="overlay-btns" id="overBtns"></div>
+    </div>
+
+    <div class="overlay" id="pauseScreen">
+      <h2 id="pauseTitle">Pauza</h2>
+      <label class="settings-field">
+        <span id="pauseVolumeLabel">Głośność</span>
+        <input type="range" id="pauseVolumeSlider" min="0" max="100" value="60" style="accent-color:#5ee9d6;">
+      </label>
+      <label class="settings-field">
+        <span id="pauseLanguageLabel">Język</span>
+        <select id="pauseLangSelect"></select>
+      </label>
+      <div class="overlay-btns">
+        <button class="btn" id="btnResume">Wznów</button>
+        <button class="btn ghost" id="btnPauseMenu">Menu główne</button>
+      </div>
+    </div>
+  </div>
+  <p class="hint hidden" id="hint">Steruj strzałkami lub WSAD. Unikaj przeszkód.</p>
+  <div class="legend hidden" id="legend">
+    <span><i class="dot" style="background:#ff5d73"></i><span id="legendBlock">Blok</span></span>
+    <span><i class="dot" style="background:#ff9f45"></i><span id="legendZigzag">Zygzak</span></span>
+    <span><i class="dot" style="background:#b672ff"></i><span id="legendOrb">Kula</span></span>
+    <span><i class="dot" style="background:#ffe45e"></i><span id="legendSlider">Suwak</span></span>
+    <span><i class="dot" style="background:#4fc3f7"></i><span id="legendSpinner">Wirnik</span></span>
+    <span><i class="dot" style="background:#ff3ea5"></i><span id="legendPulsar">Pulsar</span></span>
+    <span><i class="dot" style="background:#4ade80"></i><span id="legendGate">Brama</span></span>
+    <span><i class="dot" style="background:#7c83ff"></i><span id="legendHoming">Namierzacz</span></span>
+    <span><i class="dot" style="background:#ffb703"></i><span id="legendMine">Mina</span></span>
+    <span><i class="dot" style="background:#2dd4bf"></i><span id="legendSwarm">Rój</span></span>
+  </div>
+</div>
+
+<script src="i18n.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
