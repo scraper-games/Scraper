@@ -2116,21 +2116,34 @@
 
   // ---------- DAILY MISSIONS ----------
   // 6 templates x 5 difficulty variants = a 30-entry pool; 3 are picked at
-  // random each calendar day (see ensureDailyFresh) and always pay coins.
+  // random each calendar day (see ensureDailyFresh). Reward is no longer a
+  // fixed per-variant amount — it's rolled at completion time by
+  // rollDailyReward() (80% 200-400 coins, 20% 1-3 diamonds) and the rolled
+  // result is cached per mission id in dailyMeta.rewards so it survives a
+  // page reload without re-rolling.
   const DAILY_TEMPLATES = [
-    { key: 'daily_levels',         icon: '🎯', statKey: 'levels',           variants: [{n:1,reward:20},{n:2,reward:35},{n:3,reward:50},{n:4,reward:65},{n:5,reward:80}] },
-    { key: 'daily_freerun',        icon: '🏁', statKey: 'bestFreeRun',      variants: [{n:150,reward:15},{n:300,reward:25},{n:450,reward:35},{n:600,reward:45},{n:750,reward:55}] },
-    { key: 'daily_multiplayer',    icon: '🤝', statKey: 'multiplayerRuns',  variants: [{n:1,reward:20},{n:2,reward:30},{n:3,reward:40},{n:4,reward:50},{n:5,reward:60}] },
-    { key: 'daily_distance_total', icon: '🛣️', statKey: 'distanceTotal',    variants: [{n:300,reward:15},{n:600,reward:25},{n:900,reward:35},{n:1200,reward:45},{n:1500,reward:55}] },
-    { key: 'daily_runs_played',    icon: '🎮', statKey: 'runsPlayed',       variants: [{n:1,reward:10},{n:2,reward:20},{n:3,reward:30},{n:4,reward:40},{n:5,reward:50}] },
-    { key: 'daily_coins',          icon: '🪙', statKey: 'coinsEarnedToday', variants: [{n:20,reward:15},{n:40,reward:25},{n:60,reward:35},{n:80,reward:45},{n:100,reward:55}] }
+    { key: 'daily_levels',         icon: '🎯', statKey: 'levels',           variants: [{n:1},{n:2},{n:3},{n:4},{n:5}] },
+    { key: 'daily_freerun',        icon: '🏁', statKey: 'bestFreeRun',      variants: [{n:150},{n:300},{n:450},{n:600},{n:750}] },
+    { key: 'daily_multiplayer',    icon: '🤝', statKey: 'multiplayerRuns',  variants: [{n:1},{n:2},{n:3},{n:4},{n:5}] },
+    { key: 'daily_distance_total', icon: '🛣️', statKey: 'distanceTotal',    variants: [{n:300},{n:600},{n:900},{n:1200},{n:1500}] },
+    { key: 'daily_runs_played',    icon: '🎮', statKey: 'runsPlayed',       variants: [{n:1},{n:2},{n:3},{n:4},{n:5}] },
+    { key: 'daily_coins',          icon: '🪙', statKey: 'coinsEarnedToday', variants: [{n:20},{n:40},{n:60},{n:80},{n:100}] }
   ];
   const DAILY_POOL = [];
   DAILY_TEMPLATES.forEach(tpl => {
     tpl.variants.forEach((v, vi) => {
-      DAILY_POOL.push({ id: tpl.key + '_' + vi, key: tpl.key, icon: tpl.icon, statKey: tpl.statKey, n: v.n, reward: v.reward });
+      DAILY_POOL.push({ id: tpl.key + '_' + vi, key: tpl.key, icon: tpl.icon, statKey: tpl.statKey, n: v.n });
     });
   });
+  // 80% of the time a coin payout (200-400, rounded to steps of 20 so it
+  // always reads as a "clean" number like 260 or 380), otherwise 1-3 diamonds.
+  function rollDailyReward(){
+    if (Math.random() < 0.8) return { type: 'coins', amount: 200 + Math.floor(Math.random() * 11) * 20 };
+    return { type: 'diamonds', amount: 1 + Math.floor(Math.random() * 3) };
+  }
+  function dailyRewardText(reward){
+    return reward.type === 'coins' ? t('mission_reward_coins', { n: reward.amount }) : t('mission_reward_diamonds', { n: reward.amount });
+  }
 
   function todayStr(){
     const d = new Date();
@@ -2170,8 +2183,24 @@
   function ensureDailyFresh(){
     const today = todayStr();
     if (!dailyMeta || dailyMeta.date !== today){
-      dailyMeta = { date: today, pickedIds: pickDailyIds(), completed: [], stats: freshDailyStats() };
+      // Reward is rolled right away for all 3 of today's missions — it's
+      // decided the moment they're picked, not when the player finishes one.
+      const pickedIds = pickDailyIds();
+      const rewards = {};
+      pickedIds.forEach(id => { rewards[id] = rollDailyReward(); });
+      dailyMeta = { date: today, pickedIds, completed: [], stats: freshDailyStats(), rewards };
       saveDailyMeta();
+    } else {
+      // Backfill, per mission id (not just "does .rewards exist at all") —
+      // a save from the previous version of this feature can already have a
+      // .rewards object that's missing entries for still-incomplete
+      // missions, which would otherwise crash dailyRewardText() on undefined.
+      if (!dailyMeta.rewards) dailyMeta.rewards = {};
+      let backfilled = false;
+      dailyMeta.pickedIds.forEach(id => {
+        if (!dailyMeta.rewards[id]){ dailyMeta.rewards[id] = rollDailyReward(); backfilled = true; }
+      });
+      if (backfilled) saveDailyMeta();
     }
   }
   ensureDailyFresh();
@@ -2180,8 +2209,8 @@
     return dailyMeta.pickedIds.map(id => DAILY_POOL.find(p => p.id === id)).filter(Boolean);
   }
 
-  function showDailyToast(dm){
-    showRewardToast(dm.icon, t('mission_unlocked_toast'), t(dm.key + '_name', { n: dm.n }));
+  function showDailyToast(dm, reward){
+    showRewardToast(dm.icon, t(dm.key + '_name', { n: dm.n }), dailyRewardText(reward));
   }
 
   function checkDailyMissions(){
@@ -2189,10 +2218,14 @@
     let changed = false;
     getDailyMissions().forEach(dm => {
       if (dailyMeta.completed.indexOf(dm.id) === -1 && (dailyMeta.stats[dm.statKey] || 0) >= dm.n){
+        // Already rolled back when the mission was picked (see
+        // ensureDailyFresh) — this fallback only matters for a save that
+        // somehow reached here without one (shouldn't happen post-backfill).
+        const reward = dailyMeta.rewards[dm.id] || (dailyMeta.rewards[dm.id] = rollDailyReward());
         dailyMeta.completed.push(dm.id);
         changed = true;
-        addCoins(dm.reward);
-        showDailyToast(dm);
+        if (reward.type === 'coins') addCoins(reward.amount); else addDiamonds(reward.amount);
+        showDailyToast(dm, reward);
       }
     });
     if (changed){
@@ -2240,7 +2273,10 @@
       const prog = document.createElement('div');
       prog.className = 'mm-daily-progress';
       const cur = Math.min(dm.n, dailyMeta.stats[dm.statKey] || 0);
-      prog.textContent = done ? t('mission_reward_coins', { n: dm.reward }) : (cur + '/' + dm.n + ' • ' + t('mission_reward_coins', { n: dm.reward }));
+      // Already rolled the moment the mission was picked (see
+      // ensureDailyFresh) — shown plainly right away, not just after completion.
+      const rewardText = dailyRewardText(dailyMeta.rewards[dm.id]);
+      prog.textContent = done ? rewardText : (cur + '/' + dm.n + ' • ' + rewardText);
       info.appendChild(name); info.appendChild(desc); info.appendChild(prog);
       row.appendChild(icon); row.appendChild(info);
       mmDailyListEl.appendChild(row);

@@ -4721,3 +4721,210 @@ HUD/menu.
 zechce), i **zdecydować czy/kiedy zacommitować `game.js`/`style.css` na
 `dev`** — na koniec tej sesji zmiany istnieją tylko w working tree, nie w
 historii gita.
+
+---
+
+## 54. GUI "na nowocześniej", profil gracza, konsola deweloperska,
+    przebalansowanie misji dziennych (2026-08-16)
+
+Kontynuacja poprzedniej sesji (pkt 53) — motyw Kosmos z tamtej sesji został
+w tej faktycznie zacommitowany (patrz 54.8), razem z całą resztą poniżej.
+
+### 54.1. Lista rzeczy do zrobienia przed wersją Beta (ustalona z userem)
+
+User poprosił o rozpisanie planu przed publicznym "wypuszczeniem" gry jako
+Beta. Ustalone na czacie (nie zapisane nigdzie indziej niż tu):
+
+- **Do zrobienia:** balans (poziomy/EXP/progi odblokowań/trudność), więcej
+  ustawień (np. rozdzielczość/skalowanie canvasu), ulepszyć dźwięki, więcej
+  trybów, własne profile graczy, ulepszyć GUI, zmienić tło rozgrywki
+  (**zrobione**, Kosmos), dodać napis "Beta" (**zrobione**), streak
+  logowania (**pomysł usera, jeszcze NIE zrobiony**), ekran statystyk gracza
+  (**zrobiony**, patrz 54.2 — połączony z profilem zamiast osobnego ekranu).
+- **Do rozważenia, wymaga backendu** (świadomie odłożone, brak
+  infrastruktury serwerowej): rozgrywka online, tabele wyników (leaderboard).
+- **Osobna lista QA/testów** (z pkt 51.2, wciąż aktualna, nieprzetestowana):
+  cała ścieżka samouczka od zera, ekran końcowy w każdym trybie/języku,
+  reset gry + misje dzienne w localStorage, odblokowywanie poziomem na
+  żywo, dystans w HUD we wszystkich 4 trybach, pełny przepływ publikacji
+  end-to-end (dev→main→Netlify), weryfikacja tłumaczeń CJK, testy
+  jednostkowe.
+
+**Do zrobienia w kolejnej sesji, jeśli user zechce:** streak logowania —
+to jedyny punkt z ustalonej listy funkcji, który user potwierdził
+("na pewno dodamy"), a nie został jeszcze zrobiony (odbiegliśmy w stronę
+przebalansowania misji dziennych, patrz 54.6, zamiast tego).
+
+### 54.2. Odświeżenie GUI ("bardziej nowoczesna i profesjonalna gra")
+
+Czysto wizualny refresh w `style.css` + jeden `<link>` na fonty w
+`index.html` — **zero zmian w wymiarach/pozycjach elementów powiązanych z
+`game.js`** (canvas 480×600, siatka poziomów itd.), żeby nic nie ruszyć w
+logice.
+
+- **Fonty:** `Orbitron` (nagłówki/przyciski/HUD, sci-fi/gamingowy
+  charakter) + `Inter` (opisy/teksty, czytelność) z Google Fonts — dociągane
+  w `<head>` (`index.html`), podpięte pod istniejące zmienne
+  `--font-display`/`--font-body` (`style.css:1-19`), więc każde miejsce w
+  grze, które już używało tych zmiennych, dostało nowy font automatycznie.
+- **Efekt "szkła"** (glassmorphism) na pływających panelach HUD nad
+  animowanym tłem menu (poziom gracza, waluty, misje dzienne, wyzwanie
+  dnia, wybór trybu) — `backdrop-filter: blur()` + półprzezroczyste tło,
+  nowa zmienna `--glass`/`--glass-edge` w `:root`.
+- Nowa skala zaokrągleń (`--r-sm/md/lg/xl`), krzywa easingu
+  (`--ease`/`--ease-out`) użyta konsekwentnie w hoverach/kliknięciach,
+  warstwowe cienie (`--shadow-soft`, inset highlight na przyciskach) zamiast
+  płaskich krawędzi.
+- Drobne dodatki: kolor zaznaczenia tekstu (`::selection`), widoczny
+  outline przy nawigacji klawiaturą (`:focus-visible`), stonowany
+  `scrollbar-width: thin` w listach (osiągnięcia/misje/skrzynki).
+
+### 54.3. System Profilu gracza — awatar, nazwa, statystyki
+
+User chciał coś "jak w Brawl Stars" — ikonka gracza, klikasz i wchodzisz na
+ekran ze statystykami. Zaimplementowane jako **jeden profil na urządzenie,
+nie wiele kont/save-slotów** — czysta personalizacja + ekran ze statystykami
+tylko do odczytu.
+
+- **Nowy ekran `#profileScreen`** (`index.html`, wzorem
+  `#achievementsScreen`): duży awatar, plakietka z nazwą, poziom gracza,
+  siatka 10 wybieralnych emoji-ikonek (astronauta/kosmita/robot/UFO/rakieta/
+  planeta/gwiazda/kometa/galaktyka/obcy — `PROFILE_ICONS` w `game.js`),
+  i lista statystyk (`renderProfileStats()`) zbudowana z **liczników, które
+  gra już zbierała, ale nigdy wcześniej nie pokazywała graczowi**:
+  `totalDistanceEver`, `totalCoinsEarned`, `totalDiamondsEarned`,
+  `totalCratesOpened`, `unlockedAchievements.size`/`ACHIEVEMENTS.length`,
+  `completedMissions.size`/`MISSIONS.length`, `totalCoopRuns`,
+  `totalVersusRuns`, `totalAbilityUses`, `totalChallengesDone`, oraz
+  `bestFree` (rekord Trybu wolnego — **przeniesiony tutaj**, wcześniej
+  osobny chip na głównym menu, patrz 54.4).
+- **Wybór ikonki:** klik w siatce zapisuje `scraper_profileicon_v1`
+  (localStorage) i od razu podmienia ikonkę wszędzie (przycisk na menu +
+  duży awatar w profilu).
+- **Wymagana nazwa gracza:** blokujący modal "Nazwa Gracza:" (`#nameModal`,
+  reużywa stylu `.tutorial-modal`) wyskakuje **automatycznie zaraz po
+  ukończeniu lub pominięciu samouczka** (hak w `renderTutorial()` /
+  `checkNamePrompt()`), limit **12 znaków**, Enter zatwierdza, nie da się
+  zamknąć bez wpisania czegoś. Zapis: `scraper_playername_v1`. Nazwa
+  wyświetla się jako mała plakietka "nachodząca" na dolną krawędź okrągłego
+  awatara (styl Brawl Stars — `.mm-avatar-name`, `position:absolute` w
+  `.mm-avatar-col`), pełna, bez ucinania (celowo brak `text-overflow`).
+- Wszystkie nowe stringi UI przetłumaczone na **wszystkich 10 języków**
+  w `i18n.js` (klucze `btn_profile`, `profile_*`, `name_modal_*`).
+
+### 54.4. Nowy układ górnego paska głównego menu
+
+Na życzenie usera przeorganizowany layout (czysto CSS/HTML, żadnych zmian
+w logice):
+
+- **Lewy górny róg:** awatar profilu (`#btnProfile`, teraz okrągły,
+  78×78px) + zaraz na prawo od niego panel poziomu gracza (`.mm-level`,
+  wcześniej wyśrodkowany u góry) — oba w nowym kontenerze
+  `.mm-topleft-row`.
+- **Góra-środek** (miejsce po starym poziomie/rekordzie): napis
+  "Scraper" + "Beta" (`.mm-title`), teraz wyśrodkowany zamiast
+  przyklejony do lewej krawędzi, powiększony (44px→56px).
+- **Rekord Trybu wolnego usunięty z głównego menu** (był osobnym chipem,
+  `#mmRecord`) — przeniesiony jako pozycja na liście statystyk w ekranie
+  Profil (patrz 54.3). Martwy CSS/JS po starym `#mmRecord` posprzątany.
+- Panel misji dziennych/wyzwania dnia (`.mm-topleft-col`) przesunięty niżej
+  (114px→150px), żeby zmieścić nowy rząd awatar+poziom nad nim.
+
+### 54.5. Konsola deweloperska (`/`)
+
+Narzędzie czysto deweloperskie, **niewidoczne w żadnym menu**, tylko pod
+klawiszem `/`. Wciśnięcie `/` gdziekolwiek (menu, w trakcie biegu), o ile
+akurat nie pisze się w innym polu tekstowym, otwiera mały pasek na dole
+ekranu (`#devConsole`). Wpisanie i Enter:
+
+- `set money <n>` (alias: `set coins <n>`) — ustawia `coins`.
+- `set diamonds <n>` — ustawia `diamonds`.
+- `set level <n>` — ustawia `level`, zeruje `exp`.
+
+Nieprawidłowa komenda po prostu nic nie robi. **Ważny szczegół
+bezpieczeństwa interakcji:** input konsoli (i input nazwy gracza z 54.3)
+wołają `e.stopPropagation()` w swoim `keydown`, żeby cyfry/WASD wpisywane w
+tekście nie "przeciekały" do globalnego listenera ruchu/umiejętności
+(`window.addEventListener('keydown', ...)` w sekcji sterowania) — bez tego
+wpisanie np. "set diamonds 100" aktywowałoby też umiejętności 1/2/3.
+
+### 54.6. Przebalansowanie nagród z misji dziennych
+
+Duża zmiana w balansie, na wyraźną prośbę usera — misje dzienne **nie mają
+już stałej nagrody na wariant** (było 10-80 monet). Teraz:
+`rollDailyReward()` w `game.js`: **80% szans na monety (200-400, zaokrąglone
+co 20 — zawsze "czysta" liczba typu 260/380), 20% szans na diamenty (1-3)**.
+
+- **Nagroda jest losowana z góry**, w momencie gdy dzisiejsze 3 misje
+  zostają wybrane (`ensureDailyFresh()`), **nie** w momencie ukończenia —
+  ale user chciał, żeby i tak było to widoczne jawnie w panelu od razu
+  (nie ukryte za "???"), więc panel pokazuje konkretną wylosowaną liczbę
+  (np. "260 🪙") już przed ukończeniem, nie tylko po.
+- Wynik trzymany w nowym polu `dailyMeta.rewards` (obiekt id→{type,amount}),
+  osobne od `dailyMeta.completed`.
+- Toast po ukończeniu misji dziennej pokazuje teraz pogrubioną faktyczną
+  nagrodę zamiast tylko nazwy misji.
+- Stare stałe wartości `reward:` usunięte z `DAILY_TEMPLATES`.
+
+### 54.7. Krytyczny bug po tej zmianie + brak Node.js w tym środowisku
+
+Po pierwszej wersji 54.6 (nagroda losowana dopiero przy ukończeniu, nie z
+góry) user zgłosił **całkiem pusty, biały ekran** po otwarciu gry.
+Przyczyna: `ensureDailyFresh()`'s backfill sprawdzał tylko `if
+(!dailyMeta.rewards)` — skoro `dailyMeta.rewards` już istniał w zapisie
+usera (choćby jako pusty/częściowy obiekt z wcześniejszej iteracji tej samej
+funkcji w tej samej sesji), backfill się nie uruchamiał, a
+`dailyRewardText(undefined)` dla jeszcze nieukończonej misji wywalało cały
+`game.js` (jeden błąd w tym monolitycznym IIFE = pusta strona, bo
+`showScreen(mainMenu)` nigdy się nie wykonuje). **Naprawione** — backfill
+sprawdza teraz brakujący wpis **dla każdego dzisiejszego `id` z osobna**,
+nie tylko czy `.rewards` istnieje jako obiekt.
+
+**Ważne dla przyszłych sesji: w tym środowisku (ta maszyna, ten
+Claude Code) `node` NIE jest dostępny** — stara metoda weryfikacji składni
+z pkt 10.3 (`node -e "new Function(...)"`) **nie działa tutaj**, mimo że
+jest udokumentowana jako historyczna metoda projektu. Zamiast tego, żeby
+złapać błędy JS w konsoli bez ręcznego klikania w DevTools, znaleziony
+i zweryfikowany sposób: **Microsoft Edge w trybie headless**
+(`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`), bo
+`node`/`npm`/`python` nie ma, ale przeglądarka jest zawsze pod ręką:
+
+```
+msedge.exe --headless=new --disable-gpu --user-data-dir=<tymczasowy_folder> ^
+  --no-first-run --enable-logging=stderr --v=1 --virtual-time-budget=4000 ^
+  --dump-dom "file:///C:/.../index.html" > dump.html 2> log.txt
+```
+
+Potem `log.txt` przeszukać po `CONSOLE` + `error/exception/Uncaught` (błędy
+JS z `console.error`/nieobsłużone wyjątki lądują tam z prefiksem
+`INFO:CONSOLE:`), a `dump.html` sprawdzić czy `#mainMenu` ma klasę
+`screen show` (dowód, że `game.js` doszedł do końca bez wyjątku). **Dwie
+pułapki, na które warto uważać:** (1) trzeba **URL-encodować spacje** w
+ścieżce (`Gra Kulka` → `Gra%20Kulka`), inaczej Edge dostaje dwa osobne
+argumenty i wywala się z "Multiple targets are not supported"; (2) trzeba
+podać **osobny `--user-data-dir`**, inaczej próba odpalenia headless przy
+już uruchomionym zwykłym Edge (a user zwykle ma go otwartego, bo tam testuje
+grę) też kończy się tym samym błędem "Multiple targets".
+
+### 54.8. Stan gita na koniec sesji
+
+W trakcie tej sesji zrobiony **jeden duży commit** (`77be705`, "Add space
+theme, player profile, and modernized UI") na branchu `dev`, **zacommitowany
+i wypchnięty na `origin/dev`** — obejmuje: motyw Kosmos z poprzedniej sesji
+(pkt 53.3, wcześniej niezacommitowany), całe GUI z 54.2, profil z 54.3,
+layout z 54.4, konsolę z 54.5, etykietę "Beta", plus `.gitignore`/`icon.png`
+i wpisy dokumentacji pkt 52-53 z poprzedniej sesji.
+
+**Nie wpłynęło na `scraper-game.netlify.app`** — to wciąż tylko `dev`, nie
+`main` (patrz zasada z pkt 52 — merge do `main` tylko na wyraźną prośbę
+"publikujemy").
+
+**WAŻNE — niezacommitowane na koniec tej sesji:** wszystko z 54.6/54.7
+(przebalansowanie nagród dziennych + poprawka buga) powstało **po** tym
+jednym commicie i wciąż siedzi tylko w working tree na `dev`. Podobnie
+drobne poprawki layoutu z 54.4 (powiększenie awatara/poziomu/tytułu, ostatni
+kształt plakietki z nazwą) — też po tamtym commicie.
+
+**Do zrobienia w kolejnej sesji:** zacommitować resztę zmian (54.4 drobne
+poprawki + 54.6/54.7 przebalansowanie misji dziennych + fix buga), potem
+kontynuować od streak logowania (54.1) albo resztą listy Beta.
