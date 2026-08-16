@@ -351,8 +351,9 @@ migrowany** i zacznie się od zera pod nowymi kluczami. To świadoma decyzja
   umożliwia zainstalowanie strony jako PWA (ikona, okno bez paska adresu),
   i to głównie gdy strona jest hostowana online (HTTPS), nie przy otwieraniu
   lokalnego pliku `file://`. Jeśli user chce prawdziwą appkę, trzeba by to
-  spakować np. Electronem/Tauri albo faktycznie hostować gdzieś statycznie
-  (GitHub Pages itp.) — **to nie zostało zrobione, tylko przygotowany grunt**.
+  spakować np. Electronem/Tauri.
+- **Aktualizacja 2026-08-14: hosting online faktycznie zrobiony** — patrz
+  pkt 52 (GitHub + Netlify, `scraper-game.netlify.app`).
 
 ---
 
@@ -4601,3 +4602,122 @@ przeglądarce między turami, a nie tylko na końcu.
 - **Diamenty** — przy okazji pytania usera potwierdzone, że jedynym ich
   sinkiem wciąż jest skrzynia legendarna (10 diamentów) — bez zmian w tej
   sesji, tylko doprecyzowany nieaktualny komentarz w kodzie.
+
+---
+
+## 52. Gra działa online (GitHub + Netlify) + skrót na pulpicie (2026-08-14, część 5)
+
+Gra jest teraz faktycznie hostowana jako publiczna strona (nie tylko PWA
+z lokalnego pliku, patrz zastrzeżenie w pkt 9).
+
+- **GitHub:** repo `https://github.com/scraper-games/Scraper` (publiczne,
+  konto/org `scraper-games`). Commity idą pod username `scraper-games` z
+  prywatnym mailem `scraper-games@users.noreply.github.com` — celowo, żeby
+  nie ujawniać prawdziwego maila usera w publicznej historii commitów.
+- **Netlify:** podpięty pod to repo (dostęp tylko do repo `Scraper`, nie do
+  wszystkich repo usera). Auto-deploy **tylko** z brancha `main`.
+- **Live URL: `https://scraper-game.netlify.app`** (uwaga: NIE
+  `scraper.netlify.app` — ten adres nie działa, to była pomyłka nazwy przy
+  konfiguracji).
+- **Workflow branchy:** codzienna praca (commity, push) dzieje się na
+  branchu `dev` — to nie wpływa na stronę live. Merge `dev` → `main` (i push
+  `main`) tylko wtedy, gdy user wprost mówi, że chce opublikować/wypuścić
+  aktualizację (np. "publikujemy", "wypuszczamy aktualizację"). Dzięki temu
+  może się uzbierać tydzień pracy na `dev`, zanim trafi live w jednym
+  wydaniu.
+- **Skrót na pulpicie:** plik `Gra Kulka.url` w
+  `C:\Users\szymo\OneDrive\Pulpit` (obok innych skrótów do gier), wskazuje
+  na `https://scraper-game.netlify.app`. Otwiera stronę w domyślnej
+  przeglądarce — wymaga internetu, to nie jest lokalna/offline kopia gry.
+
+**Do zrobienia w kolejnej sesji, jeśli user zechce:** przetestować cały
+przepływ publikacji end-to-end (commit na `dev` → merge do `main` → push →
+sprawdzić, że `scraper-game.netlify.app` faktycznie się zaktualizował).
+
+---
+
+## 53. Etykieta "Alpha" + start motywu wizualnego "Kosmos" (2026-08-15/16)
+
+### 53.1. Etykieta "Alpha" na ekranie głównym
+
+Pod napisem "Scraper" na głównym menu (`#mmTitle`, `index.html`) dodany
+mały, osobny napis "Alpha" (`.mm-alpha-badge` w `style.css`) — user chciał
+jasno zaznaczyć, że gra jest we wczesnej fazie. Istniejąca niebieska
+zanikająca kreska pod tytułem (`.mm-title::after`) została nietknięta,
+Alpha siedzi kawałek niżej pod nią. Kolumna menu (`.mm-topleft-col`)
+przesunięta o 14px w dół, żeby zrobić na to miejsce. **To jedyna zmiana z
+tej sesji, która trafiła na `main` (opublikowana na żywo)** — reszta
+poniżej zostaje na razie tylko na `dev`/lokalnie, patrz 53.3.
+
+### 53.2. Zamrożone snapshoty gry na pulpicie
+
+Poza samym `Scraper.url` (zawsze wskazuje na aktualną wersję live) user
+chce też mieć możliwość wrócenia do tego, jak gra wyglądała na danym etapie.
+Mechanizm: zwykła kopia plików gry (poza repo git) w datowanym folderze na
+pulpicie + skrót `.lnk` do niej. Pierwszy taki snapshot: folder
+`Scraper-Alpha-2026-08-15` (obecnie **wewnątrz** folderu `Gra Kulka`, z
+regułą `Scraper-Alpha-*/` w nowo dodanym `.gitignore`, żeby git go
+całkowicie ignorował) + skrót `Scraper-Alpha.lnk` na pulpicie wskazujący na
+jego `index.html`. Wzorem starszego `Scraper-Prototyp.lnk` → `unik (4).html`.
+
+Przy okazji: `icon.png` — ikona gry (ta sama, która jest generowana w locie
+w `game.js` jako SVG dla PWA/manifestu, patrz pkt 9) wyeksportowana też jako
+zwykły plik PNG 512×512 w folderze gry, żeby user miał ją pod ręką jako
+osobny plik graficzny.
+
+### 53.3. Motyw wizualny "Kosmos" — w toku, NIEOPUBLIKOWANY
+
+User uznał, że gra "wygląda jak arcade z lat 80" i chciał nadać jej
+wyraźny kierunek artystyczny. Po dyskusji (patrz też plan w
+`C:\Users\szymo\.claude\plans\snappy-watching-pillow.md`) odrzucone zostały:
+cyberpunkowa neonowa alejka (zaimplementowana próbnie, user się rozmyślił,
+cofnięte przez `git checkout -- game.js style.css` zanim cokolwiek trafiło
+do commita) i "droga z góry" (odrzucona, bo wymagałaby zmiany piłki gracza
+na samochód, co zepsułoby ~40 wykupionych skórek w sklepie). Finalny
+kierunek: **kosmos** — bo pionowy canvas (480×600) naturalnie pasuje do
+"lotu w dół/przed siebie", a piłka jako sonda/orb nie wymaga naciąganej
+fabuły.
+
+**Stan na koniec sesji: zaimplementowane i widoczne w grze, ale świadomie
+NIE zacommitowane do gita (user chciał zostawić to na razie tylko lokalnie,
+nie publikować graczom)** — `game.js`/`style.css` mają niezapisane zmiany
+w working tree na branchu `dev`.
+
+Co zostało zrobione (`drawSpaceBackground()` w `game.js`, wołane z `draw()`
+i z `drawMenuIdlePreview()`, więc działa też jako tło menu głównego):
+- **Mgławice** — 3 miękkie, pulsujące plamy gradientu w tle.
+- **Asteroidy** — ~18 małych, stonowanych brył, bez blasku (żeby się nie
+  mylić z przeszkodami).
+- **Planety** — do 2 naraz na ekranie, 5 palet kolorów, każda losowo:
+  pierścień (tak/nie — **poprawnie chowa się za planetą**, rysowany w dwóch
+  połówkach: dalsza przed kulą, bliższa po), i wygląd powierzchni: kratery
+  (ciemne plamy, bez jasnych) / pasy (jak u gazowego olbrzyma) / gładka —
+  kratery i pasy generowane z odrzuceniem kolizji (rejection sampling), żeby
+  się nie nakładały, i skierowane w stronę widocznej części planety (bo
+  planeta wystaje tylko kawałkiem zza krawędzi canvasu).
+- **Komety/meteoryty** — losowe przeloty po przekątnej, ~30% to duże,
+  świecące bryły z grubszym ogonem; ~35% przelotów to "rój" 3-5 sztuk naraz.
+  Usuwane dopiero jak faktycznie wylecą poza canvas (wcześniej znikały na
+  sztywnym timerze, czasem w środku ekranu — poprawione).
+- **Satelity** — sztuczne obiekty z panelami słonecznymi (2 lub 4, losowo)
+  i migającym czerwonym światłem, 3 kategorie rozmiaru.
+- **Rakiety** — przelatują ukośnie przez ekran, 3 różne modele (klasyczna
+  biało-czerwona, "myśliwiec" szaro-cyjanowy, wahadłowiec delta-wing
+  brązowy) w 3 rozmiarach, z migającym płomieniem silnika.
+
+Wspólna paleta kolorów w `SPACE_COLORS` (`game.js`, obok `TYPE_COLORS`) +
+odpowiadające zmienne w `:root` (`style.css`) pod przyszłe przestrojenie
+HUD/menu.
+
+**Świadomie pominięte/odłożone (patrz plan w `.claude/plans`):**
+- Faza 2 planu (przemalowanie przeszkód) — uznana za zbędną: istniejące
+  przeszkody (gradient + `shadowBlur`) już dobrze pasują do kosmosu, nie
+  zmieniano `TYPE_COLORS`.
+- Faza 3 (domyślna piłka jako "sonda") i Faza 4 (HUD/menu pod paletę
+  kosmosu) — jeszcze nie zrobione.
+- Dźwięk/muzyka pod klimat kosmosu — świadomie poza zakresem, osobna sesja.
+
+**Do zrobienia w kolejnej sesji:** dokończyć Fazę 3/4 z planu (jeśli user
+zechce), i **zdecydować czy/kiedy zacommitować `game.js`/`style.css` na
+`dev`** — na koniec tej sesji zmiany istnieją tylko w working tree, nie w
+historii gita.

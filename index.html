@@ -10,6 +10,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090c14">
 <link id="pwaManifest" rel="manifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -30,7 +33,7 @@
     <div class="hitFlash" id="hitFlash"></div>
 
     <div class="screen" id="mainMenu">
-      <div class="mm-title" id="mmTitle">Scraper<span class="mm-alpha-badge">Alpha</span></div>
+      <div class="mm-title" id="mmTitle">Scraper<span class="mm-alpha-badge">Beta</span></div>
       <div class="tutorial-modal" id="tutorialModal">
         <div class="tutorial-modal-box">
           <div class="tutorial-modal-title" id="tutorialModalTitle">Samouczek</div>
@@ -40,6 +43,28 @@
             <button class="btn ghost" id="btnTutorialSkip">Pomiń samouczek</button>
             <button class="btn" id="btnTutorialOk">OK</button>
           </div>
+        </div>
+      </div>
+      <div class="tutorial-modal" id="nameModal">
+        <div class="tutorial-modal-box">
+          <div class="tutorial-modal-title" id="nameModalTitle">Nazwa Gracza:</div>
+          <input type="text" class="name-modal-input" id="nameModalInput" maxlength="12" placeholder="Wpisz swoją nazwę">
+          <div class="tutorial-modal-btns">
+            <button class="btn" id="btnNameSave">Zapisz</button>
+          </div>
+        </div>
+      </div>
+      <div class="mm-topleft-row">
+        <div class="mm-avatar-col">
+          <button class="mm-icon-btn mm-avatar-btn" id="btnProfile" title="Profil">🧑‍🚀</button>
+          <div class="mm-avatar-name" id="mmAvatarName"></div>
+        </div>
+        <div class="mm-level" id="mmLevel">
+          <div class="mm-level-top">
+            <div class="mm-level-label" id="mmLevelLabel">Poziom 1</div>
+            <div class="mm-level-exp" id="mmLevelExp">0 / 100 EXP</div>
+          </div>
+          <div class="mm-level-bar-track"><div class="mm-level-bar-fill" id="mmLevelBarFill" style="width:0%"></div></div>
         </div>
       </div>
       <div class="mm-topleft-col">
@@ -55,14 +80,6 @@
           <button class="mm-challenge-btn" id="btnChallenge">Wyzwanie</button>
         </div>
       </div>
-      <div class="mm-level" id="mmLevel">
-        <div class="mm-level-top">
-          <div class="mm-level-label" id="mmLevelLabel">Poziom 1</div>
-          <div class="mm-level-exp" id="mmLevelExp">0 / 100 EXP</div>
-        </div>
-        <div class="mm-level-bar-track"><div class="mm-level-bar-fill" id="mmLevelBarFill" style="width:0%"></div></div>
-      </div>
-      <div class="mm-record" id="mmRecord">Rekord: 0 m</div>
       <div class="mm-right-col">
         <div class="mm-currency">
           <span class="mm-currency-chip mm-chip-coins" id="mmCoins">🪙 0</span>
@@ -120,6 +137,17 @@
       </div>
       <p class="sub shop-tab-hint" id="shopTabHint">Wybierz kategorię powyżej</p>
       <button class="menu-btn ghost" id="btnBackFromShop">Powrót do menu</button>
+    </div>
+
+    <div class="screen" id="profileScreen">
+      <h2 id="profileTitle">Profil</h2>
+      <p class="sub" id="profileSubtitle">Twoja tożsamość i statystyki</p>
+      <div class="profile-avatar-big" id="profileAvatarBig">🧑‍🚀</div>
+      <div class="profile-name-line" id="profileNameLine"></div>
+      <div class="profile-level-line" id="profileLevelLine">Poziom 1</div>
+      <div class="profile-icon-grid" id="profileIconGrid"></div>
+      <div class="quest-list" id="profileStatsList"></div>
+      <button class="menu-btn ghost" id="btnBackFromProfile">Powrót do menu</button>
     </div>
 
     <div class="screen" id="achievementsScreen">
@@ -239,6 +267,11 @@
     <span><i class="dot" style="background:#ffb703"></i><span id="legendMine">Mina</span></span>
     <span><i class="dot" style="background:#2dd4bf"></i><span id="legendSwarm">Rój</span></span>
   </div>
+</div>
+
+<div class="dev-console" id="devConsole">
+  <span class="dev-console-prefix">/</span>
+  <input type="text" id="devConsoleInput" class="dev-console-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="set money 1000">
 </div>
 
 <script src="i18n.js"></script>

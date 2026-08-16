@@ -51,6 +51,14 @@
   const exitScreen = document.getElementById('exitScreen');
   const shopScreen = document.getElementById('shopScreen');
   const achievementsScreen = document.getElementById('achievementsScreen');
+  const profileScreen = document.getElementById('profileScreen');
+  const btnProfileEl = document.getElementById('btnProfile');
+  const mmAvatarNameEl = document.getElementById('mmAvatarName');
+  const profileAvatarBigEl = document.getElementById('profileAvatarBig');
+  const profileNameLineEl = document.getElementById('profileNameLine');
+  const profileLevelLineEl = document.getElementById('profileLevelLine');
+  const profileIconGridEl = document.getElementById('profileIconGrid');
+  const profileStatsListEl = document.getElementById('profileStatsList');
   const missionsScreen = document.getElementById('missionsScreen');
   const missionsListEl = document.getElementById('missionsList');
   const cratesScreen = document.getElementById('cratesScreen');
@@ -82,7 +90,6 @@
   const overExpEl = document.getElementById('overExp');
   const mmCoinsEl = document.getElementById('mmCoins');
   const mmDiamondsEl = document.getElementById('mmDiamonds');
-  const mmRecordEl = document.getElementById('mmRecord');
   const mmLevelLabelEl = document.getElementById('mmLevelLabel');
   const mmLevelExpEl = document.getElementById('mmLevelExp');
   const mmLevelBarFillEl = document.getElementById('mmLevelBarFill');
@@ -97,6 +104,12 @@
   const tutorialModalProgressEl = document.getElementById('tutorialModalProgress');
   const btnTutorialOkEl = document.getElementById('btnTutorialOk');
   const btnTutorialSkipEl = document.getElementById('btnTutorialSkip');
+  const nameModalEl = document.getElementById('nameModal');
+  const nameModalTitleEl = document.getElementById('nameModalTitle');
+  const nameModalInputEl = document.getElementById('nameModalInput');
+  const btnNameSaveEl = document.getElementById('btnNameSave');
+  const devConsoleEl = document.getElementById('devConsole');
+  const devConsoleInputEl = document.getElementById('devConsoleInput');
   const freeplayRecordEl = document.getElementById('freeplayRecord');
   const volumeSlider = document.getElementById('volumeSlider');
   const langSelect = document.getElementById('langSelect');
@@ -107,7 +120,7 @@
   const btnResume = document.getElementById('btnResume');
   const btnPauseMenu = document.getElementById('btnPauseMenu');
 
-  const screens = [mainMenu, singleSelect, settingsScreen, multiSelect, levelSelect, exitScreen, shopScreen, achievementsScreen, missionsScreen, cratesScreen, boosterScreen];
+  const screens = [mainMenu, singleSelect, settingsScreen, multiSelect, levelSelect, exitScreen, shopScreen, achievementsScreen, profileScreen, missionsScreen, cratesScreen, boosterScreen];
 
   function showScreen(el){
     screens.forEach(s => s.classList.toggle('show', s === el));
@@ -228,11 +241,11 @@
     document.getElementById('btnShop').textContent = t('btn_shop');
     document.getElementById('btnAchievements').title = t('btn_achievements');
     document.getElementById('btnSettings').title = t('btn_settings');
+    if (btnProfileEl) btnProfileEl.title = t('btn_profile');
     document.getElementById('btnMissions').textContent = t('btn_missions');
     document.getElementById('btnCrates').textContent = t('btn_crates');
     document.getElementById('btnPlay').textContent = t('btn_play');
     document.getElementById('btnExit').textContent = t('btn_exit');
-    if (mmRecordEl) mmRecordEl.textContent = t('mainMenu_record', { n: bestFree });
     renderMenuMode();
     updateCoinsHud();
     document.getElementById('mmDailyTitle').textContent = t('daily_missions_title');
@@ -243,6 +256,9 @@
 
     if (btnTutorialOkEl) btnTutorialOkEl.textContent = t('tutorial_ok');
     if (btnTutorialSkipEl) btnTutorialSkipEl.textContent = t('tutorial_skip');
+    if (nameModalTitleEl) nameModalTitleEl.textContent = t('name_modal_title');
+    if (nameModalInputEl) nameModalInputEl.placeholder = t('name_modal_placeholder');
+    if (btnNameSaveEl) btnNameSaveEl.textContent = t('name_modal_save');
 
     document.getElementById('missionsTitle').textContent = t('missions_title');
     document.getElementById('missionsSubtitle').textContent = t('missions_subtitle');
@@ -273,6 +289,11 @@
     document.getElementById('achievementsSubtitle').textContent = t('achievements_subtitle');
     document.getElementById('btnBackFromAchievements').textContent = t('btn_back_menu');
     renderAchievements();
+
+    document.getElementById('profileTitle').textContent = t('profile_title');
+    document.getElementById('profileSubtitle').textContent = t('profile_subtitle');
+    document.getElementById('btnBackFromProfile').textContent = t('btn_back_menu');
+    renderProfile();
 
     document.getElementById('singleTitle').textContent = t('single_title');
     document.getElementById('singleSubtitle').textContent = t('single_subtitle');
@@ -510,7 +531,6 @@
   function updateCoinsHud(){
     if (mmCoinsEl) mmCoinsEl.textContent = t('mainMenu_coins', { n: coins });
     if (mmDiamondsEl) mmDiamondsEl.textContent = t('mainMenu_diamonds', { n: diamonds });
-    if (mmRecordEl) mmRecordEl.textContent = t('mainMenu_record', { n: bestFree });
     if (shopCoinsEl) shopCoinsEl.textContent = t('mainMenu_coins', { n: coins });
     updateLevelHud();
   }
@@ -723,7 +743,7 @@
   // stays clickable (pulsing highlight, .tutorial-spotlight in style.css) —
   // the user's "a w resztę się nie da wtedy kliknąć" requirement. Steps 0
   // and 4 have no clickable target, so no button gets spotlighted.
-  const MAIN_MENU_INTERACTIVE_IDS = ['btnShop','btnMissions','btnCrates','btnLevels','btnPlay','mmModePrev','mmModeNext','btnChallenge','btnAchievements','btnSettings','btnExit'];
+  const MAIN_MENU_INTERACTIVE_IDS = ['btnShop','btnMissions','btnCrates','btnLevels','btnPlay','mmModePrev','mmModeNext','btnChallenge','btnAchievements','btnProfile','btnSettings','btnExit'];
   function tutorialSpotlightForStep(step){
     if (step === 1) return 'btnShop';
     if (step === 2) return 'btnAchievements';
@@ -786,6 +806,7 @@
     if (tutorialStep >= TUTORIAL_DONE_STEP){
       hideTutorialModal();
       clearTutorialSpotlight();
+      checkNamePrompt();
       return;
     }
     // Only actually pop the modal (and its typewriter sound) while the main
@@ -825,6 +846,72 @@
     saveTutorialAck(tutorialAckedStep);
     hideTutorialModal();
     clearTutorialSpotlight();
+    checkNamePrompt();
+  });
+  if (btnNameSaveEl) btnNameSaveEl.addEventListener('click', submitPlayerName);
+  if (nameModalInputEl) nameModalInputEl.addEventListener('keydown', (e) => {
+    // Stop digits/WASD typed into the name from leaking to the global
+    // movement/ability keydown listener further down this file (see
+    // runDevCommand's console input for the same guard, same reason).
+    e.stopPropagation();
+    if (e.key === 'Enter') submitPlayerName();
+  });
+
+  // ---------- DEV CONSOLE ----------
+  // Debug-only cheat console for the developer, not a player-facing feature:
+  // press "/" anywhere outside a text field to open a small command bar,
+  // type e.g. "set money 5000" / "set diamonds 200" / "set level 40", Enter
+  // to apply. Not gated behind anything — this is a local single-player save
+  // file, same trust level as editing localStorage by hand in DevTools.
+  let devConsoleOpen = false;
+  function isTypingInField(el){
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+  function openDevConsole(){
+    if (devConsoleOpen || !devConsoleEl) return;
+    devConsoleOpen = true;
+    devConsoleEl.classList.add('show');
+    if (devConsoleInputEl){ devConsoleInputEl.value = ''; devConsoleInputEl.focus(); }
+  }
+  function closeDevConsole(){
+    devConsoleOpen = false;
+    if (devConsoleEl) devConsoleEl.classList.remove('show');
+    if (devConsoleInputEl) devConsoleInputEl.blur();
+  }
+  function runDevCommand(raw){
+    const parts = raw.trim().toLowerCase().split(/\s+/);
+    if (parts[0] !== 'set' || parts.length < 3) return;
+    const n = parseInt(parts[2], 10);
+    if (isNaN(n) || n < 0) return;
+    const subject = parts[1];
+    if (subject === 'money' || subject === 'coins'){
+      coins = n; saveCoins(coins);
+    } else if (subject === 'diamonds'){
+      diamonds = n; saveDiamonds();
+    } else if (subject === 'level'){
+      level = Math.max(1, n); saveLevel(level); exp = 0; saveExp(exp);
+    } else {
+      return;
+    }
+    updateCoinsHud();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (!devConsoleOpen && e.key === '/' && !isTypingInField(document.activeElement)){
+      e.preventDefault();
+      openDevConsole();
+    }
+  });
+  if (devConsoleInputEl) devConsoleInputEl.addEventListener('keydown', (e) => {
+    // Same leak guard as the name-modal input above.
+    e.stopPropagation();
+    if (e.key === 'Enter'){
+      runDevCommand(devConsoleInputEl.value);
+      closeDevConsole();
+    } else if (e.key === 'Escape'){
+      closeDevConsole();
+    }
   });
 
   // ---------- RESET ----------
@@ -863,6 +950,58 @@
       if (keepDaily) localStorage.setItem('scraper_dailymeta_v1', JSON.stringify(keepDaily));
     } catch(e){}
     location.reload();
+  }
+
+  // ---------- PLAYER NAME PROMPT ----------
+  // Fires once, right after the 5-step tutorial finishes (see renderTutorial
+  // below) — a required "Nazwa Gracza" text prompt, not skippable like the
+  // tutorial itself, so the Profile screen has a name to show instead of a
+  // blank line. Reuses .tutorial-modal/.tutorial-modal-box (nested inside
+  // #mainMenu, same fixed full-viewport coordinates) since it's the same
+  // kind of blocking prompt — only the input field itself is new markup.
+  function loadPlayerName(){
+    try {
+      const raw = localStorage.getItem('scraper_playername_v1');
+      if (raw && raw.trim()) return raw.trim();
+    } catch(e){}
+    return '';
+  }
+  function savePlayerName(v){
+    try { localStorage.setItem('scraper_playername_v1', v); } catch(e){}
+  }
+  let playerName = loadPlayerName();
+  function updateAvatarNameLabel(){
+    if (mmAvatarNameEl) mmAvatarNameEl.textContent = playerName;
+  }
+  let nameModalOpen = false;
+  function showNameModal(){
+    if (nameModalOpen || !nameModalEl) return;
+    nameModalOpen = true;
+    nameModalEl.classList.add('show');
+    if (nameModalInputEl){
+      nameModalInputEl.value = '';
+      setTimeout(() => nameModalInputEl.focus(), 50);
+    }
+  }
+  function hideNameModal(){
+    nameModalOpen = false;
+    if (nameModalEl) nameModalEl.classList.remove('show');
+  }
+  // Only pops up once the player is actually back on the main menu (see the
+  // same reasoning in renderTutorial's showTutorialModal guard) — reaching
+  // TUTORIAL_DONE_STEP can happen while another screen is showing.
+  function checkNamePrompt(){
+    if (!playerName && mainMenu.classList.contains('show')) showNameModal();
+  }
+  function submitPlayerName(){
+    if (!nameModalInputEl) return;
+    const v = nameModalInputEl.value.trim();
+    if (!v) { nameModalInputEl.focus(); return; }
+    playerName = v;
+    savePlayerName(v);
+    hideNameModal();
+    updateAvatarNameLabel();
+    renderProfile();
   }
 
   // ---------- SHOP / SKINS ----------
@@ -1552,6 +1691,90 @@
       item.appendChild(badge); item.appendChild(icon); item.appendChild(name); item.appendChild(desc);
       achvListEl.appendChild(item);
     });
+  }
+
+  // ---------- PROFILE ----------
+  // Lightweight player identity, not a multi-account system: a chosen
+  // avatar icon (Brawl-Stars-style) plus a read-only rollup of lifetime
+  // counters that were already tracked for achievements/missions but never
+  // surfaced to the player directly.
+  const PROFILE_ICONS = ['🧑‍🚀','👽','🤖','🛸','🚀','🪐','⭐','☄️','🌌','👾'];
+  function loadProfileIcon(){
+    try {
+      const raw = localStorage.getItem('scraper_profileicon_v1');
+      if (raw && PROFILE_ICONS.indexOf(raw) !== -1) return raw;
+    } catch(e){}
+    return PROFILE_ICONS[0];
+  }
+  function saveProfileIcon(v){
+    try { localStorage.setItem('scraper_profileicon_v1', v); } catch(e){}
+  }
+  let profileIcon = loadProfileIcon();
+  function updateProfileIconButton(){
+    if (btnProfileEl) btnProfileEl.textContent = profileIcon;
+  }
+  function renderProfileIcons(){
+    if (!profileIconGridEl) return;
+    profileIconGridEl.innerHTML = '';
+    PROFILE_ICONS.forEach(ic => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'profile-icon-btn' + (ic === profileIcon ? ' active' : '');
+      b.textContent = ic;
+      b.addEventListener('click', () => {
+        profileIcon = ic;
+        saveProfileIcon(ic);
+        updateProfileIconButton();
+        if (profileAvatarBigEl) profileAvatarBigEl.textContent = ic;
+        renderProfileIcons();
+      });
+      profileIconGridEl.appendChild(b);
+    });
+  }
+  function renderProfileStats(){
+    if (!profileStatsListEl) return;
+    profileStatsListEl.innerHTML = '';
+    const stats = [
+      { icon:'🎯', key:'profile_stat_record', value: bestFree + ' m' },
+      { icon:'📏', key:'profile_stat_distance', value: totalDistanceEver + ' m' },
+      { icon:'🪙', key:'profile_stat_coins', value: String(totalCoinsEarned) },
+      { icon:'💎', key:'profile_stat_diamonds', value: String(totalDiamondsEarned) },
+      { icon:'📦', key:'profile_stat_crates', value: String(totalCratesOpened) },
+      { icon:'🏆', key:'profile_stat_achievements', value: unlockedAchievements.size + ' / ' + ACHIEVEMENTS.length },
+      { icon:'📜', key:'profile_stat_missions', value: completedMissions.size + ' / ' + MISSIONS.length },
+      { icon:'🤝', key:'profile_stat_coop', value: String(totalCoopRuns) },
+      { icon:'⚔️', key:'profile_stat_versus', value: String(totalVersusRuns) },
+      { icon:'✨', key:'profile_stat_abilities', value: String(totalAbilityUses) },
+      { icon:'🔥', key:'profile_stat_challenges', value: String(totalChallengesDone) }
+    ];
+    stats.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'quest-row';
+      const icon = document.createElement('div');
+      icon.className = 'quest-icon';
+      icon.textContent = s.icon;
+      const body = document.createElement('div');
+      body.className = 'quest-body';
+      const topLine = document.createElement('div');
+      topLine.className = 'quest-top-line';
+      const name = document.createElement('div');
+      name.className = 'quest-name';
+      name.textContent = t(s.key);
+      const val = document.createElement('div');
+      val.className = 'quest-reward';
+      val.textContent = s.value;
+      topLine.appendChild(name); topLine.appendChild(val);
+      body.appendChild(topLine);
+      row.appendChild(icon); row.appendChild(body);
+      profileStatsListEl.appendChild(row);
+    });
+  }
+  function renderProfile(){
+    if (profileAvatarBigEl) profileAvatarBigEl.textContent = profileIcon;
+    if (profileNameLineEl) profileNameLineEl.textContent = playerName;
+    if (profileLevelLineEl) profileLevelLineEl.textContent = t('mainMenu_level', { n: level });
+    renderProfileIcons();
+    renderProfileStats();
   }
 
   // ---------- MISSIONS (fixed, one-time) ----------
@@ -2692,6 +2915,36 @@
     beam:    { c: '#ff2244', g: 'rgba(255,34,68,0.6)' }
   };
 
+  // Faza 0 (motyw "kosmos") — jedno miejsce prawdy dla kolorów tła
+  // (mgławice/asteroidy/planety/komety), używane przez
+  // drawSpaceBackground() i drawMenuIdlePreview(). Trzymane osobno od
+  // TYPE_COLORS — dekoracje tła muszą zostać stonowane, żeby przeszkody
+  // dalej jednoznacznie czytały się jako zagrożenie na pierwszym planie.
+  const SPACE_COLORS = {
+    nebulaA: 'rgba(120,60,200,0.10)',
+    nebulaB: 'rgba(255,60,160,0.08)',
+    nebulaC: 'rgba(40,180,220,0.08)',
+    asteroid: '#4a4658',
+    asteroidRim: '#8a84a8',
+    planetTypes: [
+      { base: '#8a4a2e', shade: '#3a1f14', ring: 'rgba(230,180,120,0.35)' },
+      { base: '#3d6a8a', shade: '#152838', ring: 'rgba(180,220,255,0.3)' },
+      { base: '#7a3d9e', shade: '#2c1442', ring: 'rgba(220,160,255,0.3)' },
+      { base: '#a1503f', shade: '#3e1a12', ring: 'rgba(255,170,140,0.3)' },
+      { base: '#2f8f7a', shade: '#0f342c', ring: 'rgba(140,255,220,0.3)' }
+    ],
+    cometCore: '#eaf6ff',
+    cometTail: 'rgba(120,200,255,0.5)',
+    satelliteBody: '#c7cede',
+    satelliteShade: '#5a6178',
+    satellitePanel: 'rgba(90,160,220,0.55)',
+    rocketModels: [
+      { shape: 'rocket', bodyLight: '#e8ecf5', bodyDark: '#8f97ab', finColor: '#d3444f', flame: 'rgba(255,170,60,0.9)', window: '#4fc3f7' },
+      { shape: 'rocket', bodyLight: '#6b7280', bodyDark: '#2b2f3a', finColor: '#28e0ff', flame: 'rgba(120,200,255,0.9)', window: '#eaf6ff' },
+      { shape: 'shuttle', bodyLight: '#d9a66c', bodyDark: '#6b4423', finColor: '#d9a66c', flame: 'rgba(255,140,60,0.9)', window: '#ffe45e' }
+    ]
+  };
+
   // Level-mode obstacle progression: level 1 spawns only 'block', and each
   // threshold below adds one more type to the pool on top of what's already
   // unlocked (see unlockedTypesForLevel()) — matches the user's spec of
@@ -2749,12 +3002,383 @@
   }
   initStars();
 
-  // Idle canvas preview behind the fullscreen main menu — just the drifting
-  // starfield, no obstacles/players/HUD, so the board reads as "not started
-  // yet" until Play is pressed.
+  // Faza 1 (motyw "kosmos") — dekoracyjne warstwy tła: mgławice,
+  // asteroidy, rzadkie planety i komety. Rysowane przez
+  // drawSpaceBackground() pod wszystkim innym (patrz wywołania w draw() i
+  // drawMenuIdlePreview()). Celowo stonowane/bez blasku (poza jądrem
+  // komety) — to tylko dekoracja, nigdy nie może wyglądać jak przeszkoda.
+  let nebulae = [];
+  let asteroids = [];
+  let planets = [];
+  let planetTimer = 0;
+  const PLANET_MAX_ON_SCREEN = 2;
+  const PLANET_MIN_INTERVAL = 6000, PLANET_MAX_INTERVAL = 11000;
+  let nextPlanetIn = PLANET_MIN_INTERVAL + Math.random()*(PLANET_MAX_INTERVAL - PLANET_MIN_INTERVAL);
+  let satellites = [];
+  let satelliteTimer = 0;
+  const SATELLITE_MIN_INTERVAL = 9000, SATELLITE_MAX_INTERVAL = 16000;
+  let nextSatelliteIn = SATELLITE_MIN_INTERVAL + Math.random()*(SATELLITE_MAX_INTERVAL - SATELLITE_MIN_INTERVAL);
+  let comets = [];
+  let cometTimer = 0;
+  const COMET_MIN_INTERVAL = 5000, COMET_MAX_INTERVAL = 9000;
+  let nextCometIn = COMET_MIN_INTERVAL + Math.random()*(COMET_MAX_INTERVAL - COMET_MIN_INTERVAL);
+  let rockets = [];
+  let rocketTimer = 0;
+  const ROCKET_MIN_INTERVAL = 10000, ROCKET_MAX_INTERVAL = 18000;
+  let nextRocketIn = ROCKET_MIN_INTERVAL + Math.random()*(ROCKET_MAX_INTERVAL - ROCKET_MIN_INTERVAL);
+  let lastSpaceTime = performance.now();
+
+  function initSpace(){
+    nebulae = [];
+    const nebulaColors = [SPACE_COLORS.nebulaA, SPACE_COLORS.nebulaB, SPACE_COLORS.nebulaC];
+    for (let i = 0; i < 3; i++){
+      nebulae.push({
+        x: Math.random()*W, y: Math.random()*H, r: 150 + Math.random()*90,
+        color: nebulaColors[i % nebulaColors.length],
+        speed: 0.08 + Math.random()*0.08, phase: Math.random()*Math.PI*2
+      });
+    }
+    asteroids = [];
+    for (let i = 0; i < 18; i++){
+      asteroids.push({
+        x: Math.random()*W, y: Math.random()*H, size: 3 + Math.random()*7,
+        speed: 0.3 + Math.random()*0.7, angle: Math.random()*Math.PI*2, spin: (Math.random()-0.5)*0.02
+      });
+    }
+  }
+  initSpace();
+
+  function drawRingHalf(p, back){
+    ctx.save();
+    ctx.strokeStyle = p.type.ring;
+    ctx.lineWidth = p.r*0.12;
+    ctx.beginPath();
+    // Kąty w lokalnej, nieobróconej przestrzeni elipsy: [0,π] to bliższa
+    // (dolna) połowa pierścienia — rysowana NA planecie, [π,2π] to dalsza
+    // (górna) połowa — rysowana PRZED planetą, żeby chowała się za nią.
+    if (back) ctx.ellipse(p.x, p.y, p.r*1.6, p.r*0.4, -0.3, Math.PI, Math.PI*2);
+    else ctx.ellipse(p.x, p.y, p.r*1.6, p.r*0.4, -0.3, 0, Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlanet(p){
+    if (p.hasRing) drawRingHalf(p, true);
+
+    const grad = ctx.createRadialGradient(p.x-p.r*0.3, p.y-p.r*0.3, p.r*0.1, p.x, p.y, p.r);
+    grad.addColorStop(0, p.type.base);
+    grad.addColorStop(1, p.type.shade);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+
+    if (p.surface === 'craters' || p.surface === 'stripes'){
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.clip();
+      if (p.surface === 'stripes'){
+        ctx.fillStyle = p.type.shade;
+        ctx.globalAlpha = 0.45;
+        p.stripeOffsets.forEach(off => {
+          ctx.fillRect(p.x - p.r, p.y + off*p.r - p.r*0.15, p.r*2, p.r*0.28);
+        });
+        ctx.globalAlpha = 1;
+      } else {
+        p.craters.forEach(c => {
+          ctx.fillStyle = 'rgba(0,0,0,0.32)';
+          ctx.beginPath();
+          ctx.arc(p.x + c.dx*p.r, p.y + c.dy*p.r, c.cr*p.r, 0, Math.PI*2);
+          ctx.fill();
+        });
+      }
+      ctx.restore();
+    }
+
+    if (p.hasRing) drawRingHalf(p, false);
+  }
+
+  function drawComet(c){
+    const tailK = c.big ? 5 : 3;
+    const tx = c.x - c.vx*tailK, ty = c.y - c.vy*tailK;
+    const grad = ctx.createLinearGradient(c.x, c.y, tx, ty);
+    grad.addColorStop(0, SPACE_COLORS.cometTail);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = c.big ? 4 : 2;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    ctx.save();
+    const headR = c.big ? 9.5 : 3.2;
+    if (c.big){
+      const bodyGrad = ctx.createRadialGradient(c.x - headR*0.3, c.y - headR*0.3, 0.5, c.x, c.y, headR);
+      bodyGrad.addColorStop(0, '#ffffff');
+      bodyGrad.addColorStop(0.5, SPACE_COLORS.cometCore);
+      bodyGrad.addColorStop(1, SPACE_COLORS.asteroid);
+      ctx.fillStyle = bodyGrad;
+    } else {
+      ctx.fillStyle = SPACE_COLORS.cometCore;
+    }
+    ctx.shadowColor = SPACE_COLORS.cometCore;
+    ctx.shadowBlur = c.big ? 16 : 10;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, headR, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSatellite(s){
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(s.angle);
+    ctx.fillStyle = SPACE_COLORS.satellitePanel;
+    ctx.fillRect(-s.size*1.8, -s.size*0.35, s.size*1.1, s.size*0.7);
+    ctx.fillRect(s.size*0.7, -s.size*0.35, s.size*1.1, s.size*0.7);
+    if (s.panels === 4){
+      ctx.fillRect(-s.size*0.35, -s.size*1.8, s.size*0.7, s.size*1.1);
+      ctx.fillRect(-s.size*0.35, s.size*0.7, s.size*0.7, s.size*1.1);
+    }
+    const grad = ctx.createLinearGradient(-s.size*0.5, -s.size*0.5, s.size*0.5, s.size*0.5);
+    grad.addColorStop(0, SPACE_COLORS.satelliteBody);
+    grad.addColorStop(1, SPACE_COLORS.satelliteShade);
+    ctx.fillStyle = grad;
+    ctx.fillRect(-s.size*0.6, -s.size*0.45, s.size*1.2, s.size*0.9);
+    const blink = Math.sin(s.blinkPhase) > 0.4;
+    if (blink){
+      ctx.fillStyle = '#ff4d5e';
+      ctx.beginPath();
+      ctx.arc(s.size*0.6, 0, 1.4, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawRocket(r){
+    const m = SPACE_COLORS.rocketModels[r.model];
+    const s = r.size;
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(r.angle);
+
+    const flameLen = s * 0.8 * (0.7 + 0.3*Math.sin(r.flamePhase));
+    const flameGrad = ctx.createLinearGradient(-s*0.85, 0, -s*0.85 - flameLen, 0);
+    flameGrad.addColorStop(0, m.flame);
+    flameGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = flameGrad;
+    ctx.beginPath();
+    ctx.moveTo(-s*0.85, -s*0.2);
+    ctx.lineTo(-s*0.85 - flameLen, 0);
+    ctx.lineTo(-s*0.85, s*0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    const bodyGrad = ctx.createLinearGradient(0, -s*0.35, 0, s*0.35);
+    bodyGrad.addColorStop(0, m.bodyLight);
+    bodyGrad.addColorStop(1, m.bodyDark);
+
+    if (m.shape === 'shuttle'){
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(s, 0);
+      ctx.lineTo(-s*0.2, -s*0.7);
+      ctx.lineTo(-s*0.6, -s*0.15);
+      ctx.lineTo(-s*0.6, s*0.15);
+      ctx.lineTo(-s*0.2, s*0.7);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = m.finColor;
+      ctx.beginPath();
+      ctx.moveTo(-s*0.6, -s*0.22); ctx.lineTo(-s*1.0, -s*0.55); ctx.lineTo(-s*0.35, -s*0.22);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-s*0.6, s*0.22); ctx.lineTo(-s*1.0, s*0.55); ctx.lineTo(-s*0.35, s*0.22);
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = bodyGrad;
+      ctx.beginPath();
+      ctx.moveTo(s, 0);
+      ctx.lineTo(s*0.55, -s*0.3);
+      ctx.lineTo(-s*0.7, -s*0.3);
+      ctx.lineTo(-s*0.7, s*0.3);
+      ctx.lineTo(s*0.55, s*0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.fillStyle = m.window;
+    ctx.beginPath();
+    ctx.arc(s*0.15, 0, s*0.14, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawSpaceBackground(now){
+    const dt = Math.min(now - lastSpaceTime, 50) || 16.67;
+    lastSpaceTime = now;
+    const step = dt / 16.6667;
+
+    nebulae.forEach(n => {
+      n.y += n.speed * step;
+      if (n.y - n.r > H) n.y = -n.r;
+      const pulse = 1 + 0.06 * Math.sin(now*0.0006 + n.phase);
+      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r*pulse);
+      grad.addColorStop(0, n.color);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r*pulse, 0, Math.PI*2);
+      ctx.fill();
+    });
+
+    asteroids.forEach(a => {
+      a.y += a.speed * step;
+      a.angle += a.spin * step;
+      if (a.y - a.size > H){ a.y = -a.size; a.x = Math.random()*W; }
+      ctx.save();
+      ctx.translate(a.x, a.y);
+      ctx.rotate(a.angle);
+      const grad = ctx.createRadialGradient(-a.size*0.3, -a.size*0.3, 0.5, 0, 0, a.size);
+      grad.addColorStop(0, SPACE_COLORS.asteroidRim);
+      grad.addColorStop(1, SPACE_COLORS.asteroid);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, a.size, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    planets = planets.filter(p => p.y - p.r <= H);
+    planets.forEach(p => { p.y += p.speed * step; drawPlanet(p); });
+    planetTimer += dt;
+    if (planetTimer >= nextPlanetIn && planets.length < PLANET_MAX_ON_SCREEN){
+      planetTimer = 0;
+      nextPlanetIn = PLANET_MIN_INTERVAL + Math.random()*(PLANET_MAX_INTERVAL - PLANET_MIN_INTERVAL);
+      const type = SPACE_COLORS.planetTypes[Math.floor(Math.random()*SPACE_COLORS.planetTypes.length)];
+      const onLeft = Math.random() < 0.5;
+      const r = 40 + Math.random()*35;
+      // Planeta wystaje zza krawędzi canvasu (tylko część widoczna) — kratery
+      // muszą być losowane w kącie skierowanym w stronę widocznej strony
+      // (visibleAngle), inaczej większość ląduje na niewidocznym kawałku.
+      const visibleAngle = onLeft ? 0 : Math.PI;
+      const surfaceRoll = Math.random();
+      const surface = surfaceRoll < 0.35 ? 'craters' : (surfaceRoll < 0.7 ? 'stripes' : 'plain');
+      // Losowanie z odrzuceniem kolizji (rejection sampling) — próbujemy
+      // kilka razy znaleźć miejsce, które nie nachodzi na już przyjęte
+      // kratery/pasy; jeśli się nie uda w rozsądnej liczbie prób, po prostu
+      // pomijamy ten element zamiast dopuszczać nakładanie.
+      const craters = [];
+      if (surface === 'craters'){
+        const count = 4 + Math.floor(Math.random()*4);
+        for (let i = 0; i < count; i++){
+          for (let attempt = 0; attempt < 20; attempt++){
+            const a = visibleAngle + (Math.random()-0.5)*Math.PI*0.9, d = Math.random()*0.45;
+            const cr = 0.14 + Math.random()*0.18;
+            const dx = Math.cos(a)*d, dy = Math.sin(a)*d;
+            const overlaps = craters.some(c => {
+              const dist = Math.hypot(dx - c.dx, dy - c.dy);
+              return dist < (cr + c.cr) * 1.05;
+            });
+            if (!overlaps){ craters.push({ dx, dy, cr }); break; }
+          }
+        }
+      }
+      const stripeOffsets = [];
+      if (surface === 'stripes'){
+        const count = 2 + Math.floor(Math.random()*2);
+        const minGap = 0.34;
+        for (let i = 0; i < count; i++){
+          for (let attempt = 0; attempt < 20; attempt++){
+            const off = (Math.random()-0.5)*1.3;
+            if (stripeOffsets.every(o => Math.abs(off - o) >= minGap)){ stripeOffsets.push(off); break; }
+          }
+        }
+      }
+      planets.push({
+        x: onLeft ? -r*0.12 : W + r*0.12, y: -r, r, speed: 0.15 + Math.random()*0.12, type,
+        hasRing: Math.random() < 0.5, surface, craters, stripeOffsets
+      });
+    }
+
+    satellites = satellites.filter(s => s.y - s.size*2 <= H);
+    satellites.forEach(s => { s.y += s.speed * step; s.blinkPhase += 0.05 * step; drawSatellite(s); });
+    satelliteTimer += dt;
+    if (satelliteTimer >= nextSatelliteIn){
+      satelliteTimer = 0;
+      nextSatelliteIn = SATELLITE_MIN_INTERVAL + Math.random()*(SATELLITE_MAX_INTERVAL - SATELLITE_MIN_INTERVAL);
+      const sizeTiers = [ { min: 9, max: 13 }, { min: 14, max: 19 }, { min: 20, max: 27 } ];
+      const tier = sizeTiers[Math.floor(Math.random()*sizeTiers.length)];
+      satellites.push({
+        x: 30 + Math.random()*(W-60), y: -40, size: tier.min + Math.random()*(tier.max - tier.min),
+        panels: Math.random() < 0.4 ? 4 : 2,
+        speed: 0.4 + Math.random()*0.3, angle: Math.random()*Math.PI*2, blinkPhase: Math.random()*Math.PI*2
+      });
+    }
+
+    comets = comets.filter(c => c.x > -40 && c.x < W + 40 && c.y < H + 40);
+    comets.forEach(c => {
+      c.x += c.vx * step; c.y += c.vy * step;
+      drawComet(c);
+    });
+    cometTimer += dt;
+    if (cometTimer >= nextCometIn){
+      cometTimer = 0;
+      nextCometIn = COMET_MIN_INTERVAL + Math.random()*(COMET_MAX_INTERVAL - COMET_MIN_INTERVAL);
+      const fromLeft = Math.random() < 0.5;
+      const isShower = Math.random() < 0.35;
+      const count = isShower ? 3 + Math.floor(Math.random()*3) : 1;
+      const baseY = Math.random()*H*0.5;
+      for (let i = 0; i < count; i++){
+        const big = Math.random() < (isShower ? 0.25 : 0.3);
+        const vx = (fromLeft ? 1 : -1) * (big ? 2.5 + Math.random()*1.4 : 3.5 + Math.random()*2.2);
+        const vy = big ? 1.6 + Math.random()*1.1 : 2.2 + Math.random()*1.6;
+        comets.push({
+          x: (fromLeft ? -20 : W + 20) - vx * i * 6,
+          y: baseY + i * (isShower ? 16 + Math.random()*10 : 0),
+          vx, vy,
+          big
+        });
+      }
+    }
+
+    rockets = rockets.filter(r => r.x > -60 && r.x < W + 60 && r.y > -60 && r.y < H + 60);
+    rockets.forEach(r => {
+      r.x += r.vx * step; r.y += r.vy * step; r.flamePhase += 0.12 * step;
+      drawRocket(r);
+    });
+    rocketTimer += dt;
+    if (rocketTimer >= nextRocketIn){
+      rocketTimer = 0;
+      nextRocketIn = ROCKET_MIN_INTERVAL + Math.random()*(ROCKET_MAX_INTERVAL - ROCKET_MIN_INTERVAL);
+      const sizeTiers = [ { min: 14, max: 20 }, { min: 21, max: 30 }, { min: 31, max: 42 } ];
+      const tier = sizeTiers[Math.floor(Math.random()*sizeTiers.length)];
+      const size = tier.min + Math.random()*(tier.max - tier.min);
+      const fromLeft = Math.random() < 0.5;
+      const vx = (fromLeft ? 1 : -1) * (0.8 + Math.random()*0.6);
+      const vy = 0.4 + Math.random()*0.6;
+      rockets.push({
+        x: fromLeft ? -size : W + size,
+        y: Math.random()*H*0.7,
+        vx, vy, size,
+        angle: Math.atan2(vy, vx),
+        model: Math.floor(Math.random()*SPACE_COLORS.rocketModels.length),
+        flamePhase: Math.random()*Math.PI*2
+      });
+    }
+  }
+
+  // Idle canvas preview behind the fullscreen main menu — drifting
+  // starfield + the same space background as gameplay, no
+  // obstacles/players/HUD, so the board reads as "not started yet" until
+  // Play is pressed.
   let menuIdleRaf = null;
   function drawMenuIdlePreview(){
     ctx.clearRect(0, 0, W, H);
+    drawSpaceBackground(performance.now());
     stars.forEach(s => {
       s.y += s.speed * 0.35;
       if (s.y > H){ s.y = 0; s.x = Math.random()*W; }
@@ -4368,6 +4992,7 @@
 
   function draw(now){
     ctx.clearRect(0,0,W,H);
+    drawSpaceBackground(now);
 
     const isBoss = mode === 'single' && LEVELS[currentLevelIndex] && LEVELS[currentLevelIndex].isBoss;
 
@@ -4721,6 +5346,13 @@
   document.getElementById('btnBackFromAchievements').addEventListener('click', () => {
     showScreen(mainMenu);
   });
+  document.getElementById('btnProfile').addEventListener('click', () => {
+    renderProfile();
+    showScreen(profileScreen);
+  });
+  document.getElementById('btnBackFromProfile').addEventListener('click', () => {
+    showScreen(mainMenu);
+  });
   document.getElementById('btnMissions').addEventListener('click', () => {
     renderMissions();
     showScreen(missionsScreen);
@@ -4770,6 +5402,8 @@
     showScreen(mainMenu);
   });
 
+  updateProfileIconButton();
+  updateAvatarNameLabel();
   applyStaticTranslations();
   showScreen(mainMenu);
   showGameUI(false);
