@@ -4928,3 +4928,246 @@ kształt plakietki z nazwą) — też po tamtym commicie.
 **Do zrobienia w kolejnej sesji:** zacommitować resztę zmian (54.4 drobne
 poprawki + 54.6/54.7 przebalansowanie misji dziennych + fix buga), potem
 kontynuować od streak logowania (54.1) albo resztą listy Beta.
+
+---
+
+## 55. Pełnoekranowe podekrany, przeprojektowanie Osiągnięć, panel boczny
+    (hamburger), rozbudowana muzyka w menu (2026-08-17)
+
+Sesja zaczęła się od pytania o multiplayer/leaderboard online (patrz 55.1),
+ale user zdecydował odłożyć to na później i zająć się kosmetyką — reszta
+sesji to czysto wizualny/audio refresh, bez zmian w rdzeniu logiki gry.
+
+### 55.1. Multiplayer/leaderboard online — odłożone
+
+User pytał czy da się zrobić tabelę wyników i/albo pełny multiplayer.
+Wyjaśniono: leaderboard = stosunkowo proste (darmowy backend typu
+Supabase/Firebase + prosty insert/select, front prawie bez zmian),
+multiplayer na żywo = osobny, duży projekt (serwer WebSocket, synchronizacja
+stanu). User wybrał "oba, ale po kolei" (leaderboard najpierw), po czym
+przełączył się na inne rzeczy — **nic z tego nie zostało zaimplementowane
+w tej sesji**, temat czeka na start w kolejnej, jeśli user zechce.
+
+### 55.2. Powiększenie planszy 480×600 → 560×640
+
+Na życzenie usera: 40px więcej lewo/prawo, 20px więcej góra/dół
+(symetrycznie). Zmiana tylko w trzech miejscach —
+`index.html:` atrybuty `width`/`height` na `<canvas id="board">`,
+`style.css` `.stage`/`#board`. **Zero zmian w `game.js`** — cała logika gry
+liczy pozycje proporcjonalnie do `W`/`H` (`canvas.width`/`canvas.height`
+odczytane raz na starcie, `game.js:33`), nigdzie nie ma zahardkodowanych
+`480`/`600`, więc powiększenie planszy przeszło bezpiecznie bez dotykania
+mechaniki.
+
+### 55.3. Usunięcie przycisku "Wyjdź" → potwierdzenie przez Esc
+
+Stary zawsze-widoczny przycisk "Wyjdź" na dole głównego menu (`btnExit`)
+usunięty. Zamiast tego: **Esc** na głównym menu otwiera modal potwierdzenia
+("Czy na pewno chcesz wyjść z gry?") z przyciskami **Nie** (lewo) / **Tak**
+(prawo, oba stylu `ghost` — user chciał identyczny wygląd obu). Tak robi to,
+co robił stary przycisk (`window.close()` + `showScreen(exitScreen)`).
+
+- Nowy modal `#exitConfirmModal` w `index.html`, wzorem istniejącego
+  `.tutorial-modal`/`#nameModal`.
+- `game.js`: `showExitConfirm()`/`hideExitConfirm()`/`confirmExit()`, nowa
+  gałąź w globalnym listenerze `keydown` (linia ~192) — **nie koliduje** z
+  istniejącym Esc-podczas-rozgrywki (otwiera pauzę), bo ten kod ma osobną
+  wczesną gałąź dla `mode === 'single' || 'freeplay'` z `return`, więc
+  exit-confirm odpala się tylko gdy `mainMenu.classList.contains('show')`.
+- Nowe klucze i18n (`exit_confirm_title`, `btn_exit_no`, `btn_exit_yes`) we
+  **wszystkich 10 językach** w `i18n.js`. Stary klucz `btn_exit` zostawiony
+  (nieużywany teraz, ale nieszkodliwy).
+- Martwy CSS `.mm-exit-btn` posprzątany.
+
+### 55.4. Kolorowe, animowane tło strony (poza planszą)
+
+Poza planszą gry (`.stage`) tło całej reszty ekranu było prawie czarnym,
+statycznym gradientem (`html, body` w `style.css`) — user chciał "coś
+fajnego". Dodane w `style.css`:
+
+- `body::before` — pole gwiazd (7 nakładających się `radial-gradient` w
+  powtarzanym kaflu 420×320px), migające przez `@keyframes starTwinkle`
+  (6s, opacity 0.55↔1).
+- `body::after` — 3 duże, kolorowe mgławice (fiolet/róż/turkus,
+  `radial-gradient` z tych samych barw co kanwowy motyw "kosmos" z sesji
+  53/54), animowane `@keyframes nebulaDrift` (10s, translate+scale) —
+  user poprosił żeby było **szybciej i mocniej**, więc opacity ~2× wyższe
+  niż pierwsza wersja (0.30→0.55 itd.) i cykl skrócony z 26s do 10s.
+- Oba pseudo-elementy `position:fixed; z-index:0`, `.wrap` dostało
+  `z-index:1`, żeby zawartość strony zawsze była nad tłem.
+- **Bug znaleziony przez usera:** mgławica "wchodziła" na planszę gry
+  (widać było kontur `.stage` jako ciemny prostokąt na animowanym tle).
+  Przyczyna: `.stage` nie miał własnego tła, więc przy transparentnym
+  `#mainMenu`/innych ekranach zza canvasa/ekranu prześwitywało tło strony.
+  **Naprawione dwuetapowo:** (1) `.stage` dostał `background:var(--bg-deep)`
+  (nieprzezroczyste, blokuje mgławicę na głównym menu); (2) ale to z kolei
+  ujawniło **inny** artefakt po dodaniu przezroczystych pełnoekranowych
+  podekranów (patrz 55.5) — sam prostokąt `.stage` prześwitywał jako ciemny
+  "kontur" NA TYCH ekranach. Rozwiązanie: `showScreen()` (`game.js`) teraz
+  przełącza klasę `.stage.board-hidden` (`background:transparent`) zawsze
+  gdy pokazywany jest ekran inny niż `mainMenu` (dokładnie ten sam warunek
+  co istniejące już `canvas.style.visibility`), więc `.stage` jest
+  nieprzezroczysty tylko na głównym menu i w trakcie faktycznej rozgrywki.
+
+### 55.5. Wszystkie podekrany na pełny ekran (nie tylko 560×640 box)
+
+User zauważył, że np. Sklep otwiera się w "małym okienku na środku" —
+okazało się, że `#mainMenu.show` od dawna miał już
+`position:fixed;inset:0;z-index:50` (pełny viewport), ale **generyczna**
+reguła `.screen.show` (używana przez Sklep/Misje/Skrzynki/Osiągnięcia/
+Ustawienia/Profil/Poziomy/itd.) wciąż była `position:absolute` ograniczona
+do 560×640 `.stage`. Jedna zmiana w `style.css` (`.screen.show` dostało też
+`position:fixed;inset:0;z-index:50`) naprawiła to dla wszystkich ekranów
+naraz — `#mainMenu.show`'s własne (redundantne, ale nieszkodliwe) te same
+wartości zostały bez zmian.
+
+### 55.6. Przeprojektowanie ekranu Osiągnięć (pierwszy "pilot" nowego stylu)
+
+User: "wygląda dość słabo, zróbmy to porządnie i zobaczmy jak to wygląda
+zanim rozniesiemy na resztę ekranów" — Osiągnięcia stały się poligonem
+testowym dla wzorca, który ma potem trafić na inne ekrany.
+
+- **Siatka trofeów** (`.trophy-grid`) z sztywnych 2 kolumn/300px na
+  `repeat(auto-fill, minmax(190px,1fr))` na pełną szerokość, karty większe,
+  stylu "glass" (`backdrop-filter:blur`, jak reszta UI), hover unosi kartę.
+- **Przycisk cofnięcia** — nowa reużywalna klasa `.screen-back-btn`
+  (okrągły, szklany, top-left, `position:fixed`). Kilka iteracji na
+  życzenie usera: **powiększony** (64→74px), **grubszy** znaczek,
+  i finalnie **przebudowany geometrycznie** (patrz niżej — długa historia
+  centrowania).
+- **Przezroczyste tło ekranu** (`#achievementsScreen.show { background:
+  transparent; border:none; border-radius:0; }`) — odsłania animowane tło
+  strony z 55.4 zamiast płaskiego gradientu panelu, żeby karty "unosiły
+  się" nad ruchomym kosmosem. Ten sam trik co `#mainMenu.show` już
+  stosował.
+- **Historia centrowania strzałek `‹`/`›` (WAŻNA LEKCJA na przyszłość):**
+  1. Pierwsza wersja: znak Unicode `◀` (wypełniony trójkąt) — user chciał
+     cieńszy, spójny z `›` w panelu bocznym (patrz 55.7).
+  2. Zamieniono na obrócony róg kwadratu (`border-width:0 4px 4px 0` +
+     `rotate()`) — **wygląda inaczej niż się wydaje**: takie centrowanie
+     samego kwadratu centruje tylko niewidoczny bounding box, a widoczny
+     "czubek" strzałki siedzi w jednym rogu tego kwadratu, więc realnie
+     wygląda przesunięty.
+  3. Próba kompensacji przez `translateX()` żeby czubek trafił dokładnie
+     na środek przycisku — **też źle**, bo wtedy cała reszta kształtu
+     (ramiona) wystaje tylko w jedną stronę (czubek na środku ≠ kształt
+     wizualnie wyważony).
+  4. **Finalne, poprawne rozwiązanie:** strzałka zbudowana z **dwóch
+     osobnych belek** (`::before`/`::after`, każda mały prostokąt
+     `background:currentColor`) połączonych w jednym punkcie (wspólny
+     `top:50%;left:calc(50% ± shift)`, `transform-origin:0 50%`,
+     `rotate()` w przeciwne strony) — punkt zbiegu (pivot) celowo
+     przesunięty od geometrycznego środka przycisku o połowę poziomego
+     zasięgu ramion (`arm_length * cos45° / 2`), tak żeby **bounding box
+     całego kształtu** (czubek + końce obu ramion), a nie sam czubek, był
+     wyśrodkowany. **Zweryfikowane naocznie** headless-Edge screenshotami
+     z czerwonym krzyżykiem w prawdziwym środku przycisku (viewport
+     przeskalowany 4× dla czytelności) — pierwsze dwa podejścia user
+     odrzucił mówiąc "nie", trzecie zweryfikowane i zaakceptowane.
+     **Wniosek na przyszłość:** przy podobnych sztuczkach czysto-CSS
+     (ikony rysowane z border/transform) nie ufać samej matematyce/
+     intuicji — zrobić szybki izolowany plik testowy w scratchpadzie i
+     zrzut ekranu (`msedge.exe --headless=new --screenshot=...`) **zanim**
+     zgłosi się gotowość, szczególnie gdy `node`/prawdziwe DevTools nie są
+     dostępne w tym środowisku (patrz też 54.7).
+  5. Analogiczny problem i to samo rozwiązanie zastosowane do `›` w
+     panelu bocznym (55.7) — obie strzałki dzielą tę samą technikę,
+     tylko lustrzane kąty/przesunięcia.
+
+### 55.7. Hamburger + wysuwany panel boczny (zamiast ikonki Ustawień)
+
+Pomysł usera: zamiast pojedynczej ikonki ⚙️ na głównym menu — **hamburger
+(☰)** w tym samym miejscu, otwierający panel z prawej (~1/5 ekranu,
+`min-width:270px;max-width:400px`), z animacją wysuwania/chowania
+(`transform:translateX()`, tranzycja 0.32s) i przyciskiem `›` na górze do
+schowania. Na razie w panelu tylko **Ustawienia**, zbudowane tak, żeby
+łatwo dorzucić kolejne pozycje później (`.side-drawer-item`, lista
+`.side-drawer-list`).
+
+- Stary `#btnSettings` (ikonka) → `#btnMenuToggle` (hamburger, otwiera
+  panel). Nowy `#btnSettings` to teraz pozycja **wewnątrz** panelu
+  (`.side-drawer-item`), robi to co robił stary przycisk
+  (`showScreen(settingsScreen)`) + dodatkowo zamyka panel.
+  `MAIN_MENU_INTERACTIVE_IDS` (lista przycisków, które samouczek
+  odblokowuje/blokuje) zaktualizowana: `'btnSettings'` →
+  `'btnMenuToggle'`.
+- `showScreen()` (`game.js`) woła `closeDrawer()` na starcie za każdym
+  razem — panel zawsze zamyka się przy zmianie ekranu, nawet jeśli user
+  go nie zamknął ręcznie.
+- **Kilka iteracji wyglądu na życzenie usera:** mini-logo "Scraper Beta"
+  (ta sama tożsamość co `.mm-title`/`.mm-alpha-badge` z głównego menu, w
+  dużym pomniejszeniu) najpierw trafiło na ekran Osiągnięć, potem
+  **przeniesione do panelu bocznego** (obok `›`) — user doprecyzował że
+  chodziło o panel, nie Osiągnięcia. "Beta" pod niebieską kreską (nie
+  obok "Scraper"), logo **wycentrowane w przestrzeni między przyciskiem
+  `›` a krawędzią panelu** (`.side-drawer-logo-wrap { flex:1;
+  justify-content:center; }` — automatyczne równe odstępy zamiast
+  ręcznych marginesów).
+- **Wizualny refresh panelu** (na życzenie "zrób coś fajnego na tym
+  pasku"): z płaskiego nieprzezroczystego gradientu na **szklany panel**
+  (`background:var(--glass); backdrop-filter:blur(20px)`), zaokrąglone
+  lewe rogi (`border-top/bottom-left-radius:var(--r-xl)`), odstęp
+  16px od góry/dołu ekranu (efekt "pływającej karty" zamiast paska na
+  pełną wysokość), świecąca turkusowa linia pod górnym rzędem
+  (`.side-drawer-top::after`), **delikatna dryfująca mgławica wewnątrz
+  panelu** (`.side-drawer::before`, reużywa `@keyframes nebulaDrift` z
+  55.4, przycięta do zaokrąglonych rogów przez `overflow:hidden` na
+  rodzicu), i świecący pasek z lewej na pozycjach listy przy hover.
+
+### 55.8. Rozbudowana, wieloczęściowa muzyka w menu głównym
+
+User: stara muzyka w menu to "zwykły rytm zapętlony" (jeden 8-akordowy
+progres, przetasowywany, ale zawsze ten sam charakter/tempo/brzmienie) —
+chciał czegoś rozbudowanego, przyjemnego, pasującego do (kosmicznego)
+klimatu gry, i **żeby się zmieniało w zupełnie inną melodię**, nie tylko
+inne akordy. Wszystko w `game.js`, silnik audio to procedury Web Audio API
+(bez plików audio — projekt zostaje offline/bez zależności, patrz istniejący
+komentarz "Procedural soundtrack engine"). **Ścieżki rozgrywki/bossa
+(`stepProgression`/`startMusic`) celowo nietknięte** — cała nowa logika w
+osobnych, menu-only funkcjach, żeby zero ryzyka regresji w gameplayu.
+
+- **Trzy pełne "sekcje"/nastroje** zamiast jednej progresji: `warm`
+  (istniejąca Am-F-C-G-F-Am-Dm-G), `bright` (nowa, durowa
+  C-G-Am-Em-F-C-G-Am, jaśniejsza, szybsze tempo 400ms/krok, częstsze
+  iskierki), `deep` (nowa, mroczna Dm-Bb-Gm-F-Dm-Am-Bb-F, wolniejsza
+  560ms/krok, rzadsza, głębszy dron). Każda sekcja ma **własną**
+  progresję akordów, tempo, głośności warstw, zakres filtra pada, barwę
+  (`leadWave`), szansę na iskierkę i wysokość drona — `MENU_SECTIONS` w
+  `game.js`. Sekcja wybierana wg globalnego numeru taktu
+  (`menuSectionAt()`, `MENU_BARS_PER_SECTION = 24` taktów/sekcję, cykl
+  warm→bright→deep→warm... ok. 2-2.5 min na pełny obrót, ale że każda
+  sekcja ma **własną**, długą (96-taktową) kolejność akordów indeksowaną
+  globalnym numerem taktu (nie resetowaną przy każdym powrocie do
+  sekcji), powtórzenie dokładnie tego samego przebiegu zajmuje dużo
+  dłużej niż jeden cykl 3 sekcji.
+- **Nowe warstwy brzmienia** (tylko dla menu, funkcje `playMenuPad`/
+  `playMenuLead`/`playSparkle`/`startMenuDrone`/`glideMenuDrone`,
+  oddzielne od współdzielonych `playPad`/`playNote` używanych przez
+  rozgrywkę): pad z **wolno "oddychającym" filtrem dolnoprzepustowym**
+  (cutoff sweep w trakcie trwania akordu, zakres zależny od sekcji);
+  **echo/pogłos** (`DelayNode` + feedback + wet gain, `ensureMenuDelay()`,
+  jedna wspólna szyna na cały czas życia `audioCtx`) na melodii i
+  iskierkach; **"iskierki"** — rzadkie wysokie dzwonki (dwie prawie-unisono
+  sine, oktawa+detune, długi zanik), losowy moment w takcie, szansa zależna
+  od sekcji; **cichy dron** — dwa lekko rozstrojone sawtooth przez
+  lowpass, gra ciągle przez cały czas trwania muzyki w menu (nie
+  restartowany co takt jak reszta warstw), **płynnie "zjeżdża"**
+  (`linearRampToValueAtTime`, 3.5s) do wysokości nowej sekcji zamiast
+  skakać.
+- **Zmiana architektury odtwarzania:** stały `setInterval` zamieniony na
+  samo-planujący się `setTimeout` (`scheduleMenuStep()`), bo tempo
+  (`stepDur`) teraz zależy od aktualnej sekcji i może się zmieniać w
+  trakcie grania — `setInterval` nie obsłużyłby zmiennego okresu.
+
+### 55.9. Stan gita na koniec sesji
+
+**Nic w tej sesji nie zostało zacommitowane** — wszystkie zmiany (55.2
+przez 55.8) siedzą tylko w working tree na branchu `dev`
+(`git status`: `game.js`, `i18n.js`, `index.html`, `style.css` zmienione).
+User nie poprosił o commit ani o publikację — zgodnie z zasadą "nigdy nie
+commituj bez wyraźnej prośby" nic nie zostało wypchnięte.
+
+**Do zrobienia w kolejnej sesji:** zdecydować czy/kiedy zacommitować
+całość 55.2-55.8 (jeden duży commit czy podzielony), ewentualnie
+kontynuować leaderboard/multiplayer (55.1) jeśli user zechce, albo wrócić
+do reszty listy Beta z 54.1 (balans, streak logowania, więcej ustawień).

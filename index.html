@@ -29,7 +29,7 @@
     <span class="ability-slot" id="abilitySlot-pulse">3: 💥 ×0</span>
   </div>
   <div class="stage" id="stage">
-    <canvas id="board" width="480" height="600"></canvas>
+    <canvas id="board" width="560" height="640"></canvas>
     <div class="hitFlash" id="hitFlash"></div>
 
     <div class="screen" id="mainMenu">
@@ -51,6 +51,15 @@
           <input type="text" class="name-modal-input" id="nameModalInput" maxlength="12" placeholder="Wpisz swoją nazwę">
           <div class="tutorial-modal-btns">
             <button class="btn" id="btnNameSave">Zapisz</button>
+          </div>
+        </div>
+      </div>
+      <div class="tutorial-modal" id="exitConfirmModal">
+        <div class="tutorial-modal-box">
+          <div class="tutorial-modal-title" id="exitConfirmTitle">Czy na pewno chcesz wyjść z gry?</div>
+          <div class="tutorial-modal-btns">
+            <button class="btn ghost" id="btnExitNo">Nie</button>
+            <button class="btn ghost" id="btnExitYes">Tak</button>
           </div>
         </div>
       </div>
@@ -87,7 +96,7 @@
         </div>
         <div class="mm-icon-row">
           <button class="mm-icon-btn" id="btnAchievements" title="Osiągnięcia">🏆</button>
-          <button class="mm-icon-btn" id="btnSettings" title="Ustawienia">⚙️</button>
+          <button class="mm-icon-btn" id="btnMenuToggle" title="Menu">☰</button>
         </div>
         <div class="mm-side-buttons">
           <button class="menu-btn secondary mm-side-btn" id="btnShop">Sklep</button>
@@ -104,7 +113,20 @@
         </div>
         <button class="mm-play-btn" id="btnPlay">GRAJ</button>
       </div>
-      <button class="mm-exit-btn" id="btnExit">Exit</button>
+      <div class="side-drawer" id="sideDrawer">
+        <div class="side-drawer-top">
+          <button class="side-drawer-close" id="btnDrawerClose" title="Zamknij menu"></button>
+          <div class="side-drawer-logo-wrap">
+            <div class="mini-logo">
+              <div class="mini-logo-title">Scraper</div>
+              <div class="mini-logo-badge">Beta</div>
+            </div>
+          </div>
+        </div>
+        <div class="side-drawer-list">
+          <button class="side-drawer-item" id="btnSettings"><span class="side-drawer-item-icon">⚙️</span><span id="btnSettingsLabel">Ustawienia</span></button>
+        </div>
+      </div>
     </div>
 
     <div class="screen" id="singleSelect">
@@ -150,11 +172,11 @@
       <button class="menu-btn ghost" id="btnBackFromProfile">Powrót do menu</button>
     </div>
 
-    <div class="screen" id="achievementsScreen">
+    <div class="screen achv-screen" id="achievementsScreen">
+      <button class="screen-back-btn" id="btnBackFromAchievements" title="Powrót do menu"></button>
       <h2 id="achievementsTitle">Osiągnięcia</h2>
       <p class="sub" id="achievementsSubtitle">Twoje postępy w grze</p>
       <div class="trophy-grid" id="achvList"></div>
-      <button class="menu-btn ghost" id="btnBackFromAchievements">Powrót do menu</button>
     </div>
 
     <div class="screen" id="missionsScreen">

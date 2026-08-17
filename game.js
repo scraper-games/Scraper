@@ -108,6 +108,14 @@
   const nameModalTitleEl = document.getElementById('nameModalTitle');
   const nameModalInputEl = document.getElementById('nameModalInput');
   const btnNameSaveEl = document.getElementById('btnNameSave');
+  const exitConfirmModalEl = document.getElementById('exitConfirmModal');
+  const exitConfirmTitleEl = document.getElementById('exitConfirmTitle');
+  const btnExitNoEl = document.getElementById('btnExitNo');
+  const btnExitYesEl = document.getElementById('btnExitYes');
+  const sideDrawerEl = document.getElementById('sideDrawer');
+  const btnMenuToggleEl = document.getElementById('btnMenuToggle');
+  const btnDrawerCloseEl = document.getElementById('btnDrawerClose');
+  const btnSettingsLabelEl = document.getElementById('btnSettingsLabel');
   const devConsoleEl = document.getElementById('devConsole');
   const devConsoleInputEl = document.getElementById('devConsoleInput');
   const freeplayRecordEl = document.getElementById('freeplayRecord');
@@ -123,8 +131,16 @@
   const screens = [mainMenu, singleSelect, settingsScreen, multiSelect, levelSelect, exitScreen, shopScreen, achievementsScreen, profileScreen, missionsScreen, cratesScreen, boosterScreen];
 
   function showScreen(el){
+    closeDrawer();
     screens.forEach(s => s.classList.toggle('show', s === el));
     canvas.style.visibility = (!el || el === mainMenu) ? 'visible' : 'hidden';
+    // .stage has its own opaque background (see 55.x background-enlargement
+    // notes) so the animated page-level nebula never bleeds through the
+    // canvas's transparent edges while on the main menu — but that same
+    // opaque rect shows through as a faint 560x640 "box" behind any other,
+    // now-transparent full-screen overlay (achievementsScreen etc.). Hide it
+    // in exactly that case; keep it opaque for mainMenu and actual gameplay.
+    stageEl.classList.toggle('board-hidden', !!el && el !== mainMenu);
     if (el){
       stopMusic();
       startMenuMusic();
@@ -186,10 +202,14 @@
     showScreen(mainMenu);
   });
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && (mode === 'single' || mode === 'freeplay')){
+    if (e.key !== 'Escape') return;
+    if (mode === 'single' || mode === 'freeplay'){
       if (pauseScreen.classList.contains('show')) closePause();
       else if (running) openPause();
+      return;
     }
+    if (exitConfirmOpen) hideExitConfirm();
+    else if (mainMenu.classList.contains('show')) showExitConfirm();
   });
 
   // ---------- I18N ----------
@@ -240,12 +260,15 @@
   function applyStaticTranslations(){
     document.getElementById('btnShop').textContent = t('btn_shop');
     document.getElementById('btnAchievements').title = t('btn_achievements');
-    document.getElementById('btnSettings').title = t('btn_settings');
+    if (btnMenuToggleEl) btnMenuToggleEl.title = t('btn_menu');
+    if (btnSettingsLabelEl) btnSettingsLabelEl.textContent = t('btn_settings');
     if (btnProfileEl) btnProfileEl.title = t('btn_profile');
     document.getElementById('btnMissions').textContent = t('btn_missions');
     document.getElementById('btnCrates').textContent = t('btn_crates');
     document.getElementById('btnPlay').textContent = t('btn_play');
-    document.getElementById('btnExit').textContent = t('btn_exit');
+    if (exitConfirmTitleEl) exitConfirmTitleEl.textContent = t('exit_confirm_title');
+    if (btnExitNoEl) btnExitNoEl.textContent = t('btn_exit_no');
+    if (btnExitYesEl) btnExitYesEl.textContent = t('btn_exit_yes');
     renderMenuMode();
     updateCoinsHud();
     document.getElementById('mmDailyTitle').textContent = t('daily_missions_title');
@@ -287,7 +310,7 @@
 
     document.getElementById('achievementsTitle').textContent = t('achievements_title');
     document.getElementById('achievementsSubtitle').textContent = t('achievements_subtitle');
-    document.getElementById('btnBackFromAchievements').textContent = t('btn_back_menu');
+    document.getElementById('btnBackFromAchievements').title = t('btn_back_menu');
     renderAchievements();
 
     document.getElementById('profileTitle').textContent = t('profile_title');
@@ -743,7 +766,7 @@
   // stays clickable (pulsing highlight, .tutorial-spotlight in style.css) —
   // the user's "a w resztę się nie da wtedy kliknąć" requirement. Steps 0
   // and 4 have no clickable target, so no button gets spotlighted.
-  const MAIN_MENU_INTERACTIVE_IDS = ['btnShop','btnMissions','btnCrates','btnLevels','btnPlay','mmModePrev','mmModeNext','btnChallenge','btnAchievements','btnProfile','btnSettings','btnExit'];
+  const MAIN_MENU_INTERACTIVE_IDS = ['btnShop','btnMissions','btnCrates','btnLevels','btnPlay','mmModePrev','mmModeNext','btnChallenge','btnAchievements','btnProfile','btnMenuToggle'];
   function tutorialSpotlightForStep(step){
     if (step === 1) return 'btnShop';
     if (step === 2) return 'btnAchievements';
@@ -987,6 +1010,40 @@
     nameModalOpen = false;
     if (nameModalEl) nameModalEl.classList.remove('show');
   }
+  // Replaces the old always-visible "Exit" button on the main menu — Esc now
+  // opens this confirm prompt instead (see the keydown listener near the top
+  // of the file), only while the main menu itself is showing (not mid-run,
+  // where Esc already means "open pause").
+  let exitConfirmOpen = false;
+  function showExitConfirm(){
+    if (exitConfirmOpen || !exitConfirmModalEl) return;
+    exitConfirmOpen = true;
+    exitConfirmModalEl.classList.add('show');
+  }
+  function hideExitConfirm(){
+    exitConfirmOpen = false;
+    if (exitConfirmModalEl) exitConfirmModalEl.classList.remove('show');
+  }
+  function confirmExit(){
+    hideExitConfirm();
+    try { window.close(); } catch(e){}
+    showScreen(exitScreen);
+  }
+  if (btnExitNoEl) btnExitNoEl.addEventListener('click', hideExitConfirm);
+  if (btnExitYesEl) btnExitYesEl.addEventListener('click', confirmExit);
+
+  // ---------- SIDE DRAWER ----------
+  // Hamburger-triggered menu panel (replaces the old lone gear icon) — right
+  // now it only holds Settings, but it's built to grow more items later
+  // without needing another icon slot on the top bar.
+  function openDrawer(){ if (sideDrawerEl) sideDrawerEl.classList.add('show'); }
+  function closeDrawer(){ if (sideDrawerEl) sideDrawerEl.classList.remove('show'); }
+  function toggleDrawer(){
+    if (!sideDrawerEl) return;
+    sideDrawerEl.classList.contains('show') ? closeDrawer() : openDrawer();
+  }
+  if (btnMenuToggleEl) btnMenuToggleEl.addEventListener('click', toggleDrawer);
+  if (btnDrawerCloseEl) btnDrawerCloseEl.addEventListener('click', closeDrawer);
   // Only pops up once the player is actually back on the main menu (see the
   // same reasoning in renderTutorial's showTutorialModal guard) — reaching
   // TUTORIAL_DONE_STEP can happen while another screen is showing.
@@ -2562,6 +2619,122 @@
     o.start(time); o.stop(time + 0.2);
   }
 
+  // ---- Main-menu-only extra layers ----
+  // The menu track gets its own, richer instrument set instead of reusing
+  // playPad/playNote — kept fully separate from the shared functions above
+  // so gameplay/boss music (fast tempo, needs to stay tight) is untouched.
+  // Echo bus: a feedback delay that the menu's lead + sparkle layers route
+  // through, for the "sound trailing off into space" effect ambient/space
+  // soundtracks lean on. Lazily created once, reused for the track's whole
+  // lifetime (menu music starts/stops far more often than the delay itself
+  // needs rebuilding).
+  let menuDelay = null, menuDelayWet = null;
+  function ensureMenuDelay(){
+    if (menuDelay) return;
+    menuDelay = audioCtx.createDelay(2.0);
+    menuDelay.delayTime.value = 0.44;
+    const feedback = audioCtx.createGain();
+    feedback.gain.value = 0.4;
+    menuDelayWet = audioCtx.createGain();
+    menuDelayWet.gain.value = 0.55;
+    menuDelay.connect(feedback);
+    feedback.connect(menuDelay);
+    menuDelay.connect(menuDelayWet);
+    menuDelayWet.connect(masterGain);
+  }
+  // Same warm triangle pad as playPad, but routed through a lowpass filter
+  // whose cutoff slowly sweeps up and back down across the bar — a cheap,
+  // classic ambient-pad trick that keeps a held chord feeling alive instead
+  // of static for the ~2s it rings out.
+  function playMenuPad(freqs, time, dur, vol, filterLo, filterHi){
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.Q.value = 0.6;
+    filt.frequency.setValueAtTime(filterLo, time);
+    filt.frequency.linearRampToValueAtTime(filterHi, time + dur*0.5);
+    filt.frequency.linearRampToValueAtTime(filterLo, time + dur);
+    filt.connect(masterGain);
+    freqs.forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      o.detune.value = (i - (freqs.length-1)/2) * 5;
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.exponentialRampToValueAtTime(vol, time + dur*0.4);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+      o.connect(g); g.connect(filt);
+      o.start(time); o.stop(time + dur + 0.1);
+    });
+  }
+  // Lead arp note, sent to the echo bus (in addition to the normal dry
+  // signal) so single plucked notes trail off instead of cutting cleanly —
+  // this is most of what makes the menu loop read as "spacious" rather
+  // than "a bare arpeggio".
+  function playMenuLead(freq, time, dur, vol, wave){
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = wave || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(vol, time + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    o.connect(g); g.connect(masterGain); g.connect(menuDelay);
+    o.start(time); o.stop(time + dur + 0.05);
+  }
+  // Occasional high "twinkling star" bell — two near-unison sines (one
+  // detuned an octave-ish up) with a long exponential decay, fired
+  // sparingly (see stepMenuProgression) rather than every bar so it reads
+  // as a rare sparkle, not a busy layer.
+  function playSparkle(freq, time, vol){
+    const o1 = audioCtx.createOscillator();
+    const o2 = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o1.type = 'sine'; o1.frequency.value = freq;
+    o2.type = 'sine'; o2.frequency.value = freq * 2.005;
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(vol, time + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 1.6);
+    o1.connect(g); o2.connect(g); g.connect(masterGain); g.connect(menuDelay);
+    o1.start(time); o1.stop(time + 1.7);
+    o2.start(time); o2.stop(time + 1.7);
+  }
+  // Very quiet, continuously-running sub-bass drone (two slightly detuned
+  // low sawtooths through a lowpass) — the "engine hum" bed felt more than
+  // heard underneath the chords, running for the menu music's whole
+  // lifetime rather than being re-triggered per bar like the other layers.
+  let menuDrone = null;
+  function startMenuDrone(freq){
+    if (menuDrone) return;
+    const o1 = audioCtx.createOscillator();
+    const o2 = audioCtx.createOscillator();
+    o1.type = 'sawtooth'; o1.frequency.value = freq;
+    o2.type = 'sawtooth'; o2.frequency.value = freq * 1.0055;
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 200;
+    filt.Q.value = 0.4;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.022;
+    o1.connect(filt); o2.connect(filt); filt.connect(g); g.connect(masterGain);
+    o1.start(); o2.start();
+    menuDrone = { o1, o2 };
+  }
+  function stopMenuDrone(){
+    if (!menuDrone) return;
+    try { menuDrone.o1.stop(); menuDrone.o2.stop(); } catch(e){}
+    menuDrone = null;
+  }
+  // Glides the already-running drone oscillators to a new section's pitch
+  // over a few seconds instead of restarting them — an audible but smooth
+  // "the ground shifts under you" cue right as the section changes.
+  function glideMenuDrone(freq, overSeconds){
+    if (!menuDrone || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    menuDrone.o1.frequency.linearRampToValueAtTime(freq, now + overSeconds);
+    menuDrone.o2.frequency.linearRampToValueAtTime(freq * 1.0055, now + overSeconds);
+  }
+
   // Each chord: bass note, 3-note pad, and a 4-note arpeggio (chord tones, one
   // step each) — a chord always lasts exactly 4 steps, see stepProgression().
   // 8 chords per track (was 4) — combined with the long, non-repeating-adjacent
@@ -2632,6 +2805,52 @@
   const GAME_SEQUENCE = buildChordSequence(GAME_PROGRESSION.length, 256, 41);
   const BOSS_SEQUENCE = buildChordSequence(BOSS_PROGRESSION.length, 240, 73);
 
+  // Two more menu progressions, each with its own instrumentation, so the
+  // menu track moves through distinct sections instead of endlessly
+  // reshuffling one 8-chord pool — see MENU_SECTIONS / stepMenuProgression.
+  const MENU_PROGRESSION_BRIGHT = [ // C - G - Am - Em - F - C - G - Am, major and hopeful
+    { bass: 130.81, pad: [261.63, 329.63, 392.00], arp: [392.00, 523.25, 659.25, 523.25] }, // C
+    { bass: 98.00,  pad: [196.00, 246.94, 293.66], arp: [293.66, 392.00, 493.88, 392.00] }, // G
+    { bass: 110.00, pad: [220.00, 261.63, 329.63], arp: [329.63, 440.00, 523.25, 440.00] }, // Am
+    { bass: 82.41,  pad: [164.81, 196.00, 246.94], arp: [246.94, 329.63, 392.00, 329.63] }, // Em
+    { bass: 87.31,  pad: [174.61, 220.00, 261.63], arp: [261.63, 349.23, 440.00, 349.23] }, // F
+    { bass: 130.81, pad: [261.63, 329.63, 392.00], arp: [392.00, 523.25, 659.25, 523.25] }, // C
+    { bass: 98.00,  pad: [196.00, 246.94, 293.66], arp: [293.66, 392.00, 493.88, 392.00] }, // G
+    { bass: 110.00, pad: [220.00, 261.63, 329.63], arp: [329.63, 440.00, 523.25, 440.00] }  // Am
+  ];
+  const MENU_PROGRESSION_DEEP = [ // Dm - Bb - Gm - F - Dm - Am - Bb - F, dark and sparse
+    { bass: 73.42,  pad: [146.83, 174.61, 220.00], arp: [220.00, 293.66, 349.23, 293.66] }, // Dm
+    { bass: 58.27,  pad: [116.54, 146.83, 174.61], arp: [174.61, 233.08, 293.66, 233.08] }, // Bb
+    { bass: 98.00,  pad: [196.00, 233.08, 293.66], arp: [293.66, 392.00, 466.16, 392.00] }, // Gm
+    { bass: 87.31,  pad: [174.61, 220.00, 261.63], arp: [261.63, 349.23, 440.00, 349.23] }, // F
+    { bass: 73.42,  pad: [146.83, 174.61, 220.00], arp: [220.00, 293.66, 349.23, 293.66] }, // Dm
+    { bass: 110.00, pad: [220.00, 261.63, 329.63], arp: [329.63, 440.00, 523.25, 440.00] }, // Am
+    { bass: 58.27,  pad: [116.54, 146.83, 174.61], arp: [174.61, 233.08, 293.66, 233.08] }, // Bb
+    { bass: 87.31,  pad: [174.61, 220.00, 261.63], arp: [261.63, 349.23, 440.00, 349.23] }  // F
+  ];
+  // Long, per-section chord orders (96 bars each) — the outer section loop
+  // (MENU_BARS_PER_SECTION bars per visit, see stepMenuProgression) only
+  // advances a little way into each on any single visit, so revisiting a
+  // section later picks up further along its own sequence instead of
+  // replaying the same handful of bars every time it comes back around.
+  const MENU_SEQUENCE_BRIGHT = buildChordSequence(MENU_PROGRESSION_BRIGHT.length, 96, 29);
+  const MENU_SEQUENCE_DEEP = buildChordSequence(MENU_PROGRESSION_DEEP.length, 96, 53);
+  const MENU_BARS_PER_SECTION = 24;
+  // Three full "movements" for the menu track, each a genuinely different
+  // piece rather than just a chord reshuffle — different progression,
+  // tempo, volumes, filter sweep range, lead timbre, sparkle frequency and
+  // drone pitch. menuSectionAt() picks one by absolute bar index, so the
+  // track cycles warm -> bright -> deep -> warm -> ... for as long as the
+  // menu stays open.
+  const MENU_SECTIONS = [
+    { name: 'warm',   progression: MENU_PROGRESSION,        sequence: MENU_SEQUENCE,        stepDur: 480, padVol: 0.075, bassVol: 0.09, leadVol: 0.06,  leadWave: 'sine',     filterLo: 500, filterHi: 1600, sparkleChance: 0.33, droneFreq: 55.00 },
+    { name: 'bright', progression: MENU_PROGRESSION_BRIGHT, sequence: MENU_SEQUENCE_BRIGHT, stepDur: 400, padVol: 0.07,  bassVol: 0.10, leadVol: 0.075, leadWave: 'triangle', filterLo: 700, filterHi: 2200, sparkleChance: 0.5,  droneFreq: 65.41 },
+    { name: 'deep',   progression: MENU_PROGRESSION_DEEP,   sequence: MENU_SEQUENCE_DEEP,   stepDur: 560, padVol: 0.065, bassVol: 0.11, leadVol: 0.045, leadWave: 'sine',     filterLo: 260, filterHi: 800,  sparkleChance: 0.15, droneFreq: 41.20 }
+  ];
+  function menuSectionAt(barIdx){
+    return MENU_SECTIONS[Math.floor(barIdx / MENU_BARS_PER_SECTION) % MENU_SECTIONS.length];
+  }
+
   function stepProgression(progression, sequence, stepIdx, opts){
     const now = audioCtx.currentTime;
     const posInChord = stepIdx % 4;
@@ -2646,6 +2865,45 @@
     }
     playNote(chord.arp[arpOrder[posInChord]], now, (opts.stepDur/1000)*0.85, opts.leadWave, opts.leadVol);
     if (opts.drums) playHat(now, opts.hatVol);
+  }
+
+  // Menu-only equivalent of stepProgression() above, using the richer
+  // playMenuPad/playMenuLead/playSparkle layers instead of playPad/playNote,
+  // and — unlike the shared one — a different chord pool, tempo and timbre
+  // depending which of MENU_SECTIONS the absolute bar index currently falls
+  // in. Returns the active section so the caller (the setTimeout loop below)
+  // knows how long to wait before the next step, since tempo now varies.
+  let lastMenuSectionName = null;
+  function stepMenuProgression(stepIdx){
+    ensureMenuDelay();
+    const now = audioCtx.currentTime;
+    const posInChord = stepIdx % 4;
+    const barIdx = Math.floor(stepIdx / 4);
+    const section = menuSectionAt(barIdx);
+    if (section.name !== lastMenuSectionName){
+      // New section just started — glide the drone to its pitch instead of
+      // snapping, so the transition feels like one continuous piece moving
+      // somewhere new rather than a hard cut to a different track.
+      lastMenuSectionName = section.name;
+      glideMenuDrone(section.droneFreq, 3.5);
+    }
+    const chord = section.progression[section.sequence[barIdx % section.sequence.length]];
+    const arpOrder = ARP_PATTERNS[barIdx % ARP_PATTERNS.length];
+    const stepDur = section.stepDur / 1000;
+    const barDur = stepDur * 4;
+    if (posInChord === 0){
+      playMenuPad(chord.pad, now, barDur*1.2, section.padVol, section.filterLo, section.filterHi);
+      playBass(chord.bass, now, barDur*0.95, section.bassVol);
+      // Sparkle chance varies per section (frequent/sparkly in "bright",
+      // rare in "deep") — fired at a random point within the bar so it
+      // never reads as a metronomic layer.
+      if (Math.random() < section.sparkleChance){
+        const sparkleFreq = chord.arp[Math.floor(Math.random()*chord.arp.length)] * 2;
+        playSparkle(sparkleFreq, now + stepDur*(0.5 + Math.random()*3), 0.045);
+      }
+    }
+    playMenuLead(chord.arp[arpOrder[posInChord]], now, stepDur*0.9, section.leadVol, section.leadWave);
+    return section;
   }
 
   let gameStep = 0;
@@ -2671,22 +2929,31 @@
     if (musicTimer) clearInterval(musicTimer);
     musicTimer = null;
   }
+  // Self-rescheduling setTimeout instead of a fixed-period setInterval —
+  // MENU_SECTIONS gives each section its own stepDur (tempo), so the delay
+  // before the *next* step has to be read back from whichever section the
+  // step that just played belonged to.
+  function scheduleMenuStep(){
+    if (!musicOn || !audioCtx) { menuMusicTimer = null; return; }
+    const section = stepMenuProgression(menuStep);
+    menuStep++;
+    menuMusicTimer = setTimeout(scheduleMenuStep, section.stepDur);
+  }
   function startMenuMusic(){
     if (!musicOn) return;
     ensureAudio();
+    ensureMenuDelay();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    if (menuMusicTimer) clearInterval(menuMusicTimer);
-    const opts = { stepDur: 480, padVol: 0.08, bassVol: 0.10, leadWave: 'sine', leadVol: 0.07, drums: false, hatVol: 0, kickVol: 0 };
+    if (menuMusicTimer) clearTimeout(menuMusicTimer);
+    lastMenuSectionName = null;
+    startMenuDrone(MENU_SECTIONS[0].droneFreq);
     menuStep = 0;
-    menuMusicTimer = setInterval(() => {
-      if (!musicOn || !audioCtx) return;
-      stepProgression(MENU_PROGRESSION, MENU_SEQUENCE, menuStep, opts);
-      menuStep++;
-    }, opts.stepDur);
+    scheduleMenuStep();
   }
   function stopMenuMusic(){
-    if (menuMusicTimer) clearInterval(menuMusicTimer);
+    if (menuMusicTimer) clearTimeout(menuMusicTimer);
     menuMusicTimer = null;
+    stopMenuDrone();
   }
   function playHit(){
     if (!musicOn || !audioCtx) return;
@@ -5419,6 +5686,7 @@
     showScreen(mainMenu);
   });
   document.getElementById('btnSettings').addEventListener('click', () => {
+    closeDrawer();
     showScreen(settingsScreen);
   });
   document.getElementById('btnBackFromSettings').addEventListener('click', () => {
@@ -5426,10 +5694,6 @@
   });
   if (btnResetGameEl) btnResetGameEl.addEventListener('click', () => {
     if (confirm(t('reset_confirm'))) resetGame();
-  });
-  document.getElementById('btnExit').addEventListener('click', () => {
-    try { window.close(); } catch(e){}
-    showScreen(exitScreen);
   });
   document.getElementById('btnBackFromLevels').addEventListener('click', () => {
     showScreen(mainMenu);
